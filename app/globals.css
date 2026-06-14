@@ -766,7 +766,8 @@ a {
   }
 
   .funnel-content {
-    padding-top: 6px;
+    padding-top: 12px;
+    padding-bottom: 10px;
   }
 
   .hero-lockup {
@@ -780,24 +781,28 @@ a {
   }
 
   .hero-copy-block h1 {
-    font-size: clamp(19px, 5.7vw, 25px);
+    font-size: clamp(20px, 5.9vw, 26px);
   }
 
   .hero-subtitle,
   .eligibility-note {
-    font-size: 7px;
+    font-size: 8px;
+  }
+
+  .eligibility-note {
+    margin: 7px 0 11px;
   }
 
   .prompt-banner {
     width: min(100%, 350px);
     min-width: 0;
-    margin-bottom: 16px;
-    font-size: 9px;
+    margin-bottom: 21px;
+    font-size: 10px;
   }
 
   .prompt-copy {
-    padding: 5px 3px;
-    font-size: 10px;
+    padding: 6px 4px;
+    font-size: 11px;
   }
 
   .price-odometer {
@@ -825,39 +830,62 @@ a {
 
   .question-card {
     max-width: 360px;
-    padding-top: 8px;
+    padding-top: 10px;
+    padding-bottom: 9px;
   }
 
   .question-heading h2 {
-    font-size: 13px;
+    font-size: 14px;
+  }
+
+  .progress-dots {
+    margin: 7px 0 10px;
+  }
+
+  .answer-list {
+    gap: 8px;
   }
 
   .answer-list button {
-    min-height: 40px;
-    font-size: 11px;
+    min-height: 44px;
+    font-size: 12px;
+  }
+
+  .selection-status {
+    margin-top: 9px;
+    font-size: 9px;
   }
 
   .trust-panel {
-    margin-top: 7px;
-    padding-block: 7px;
+    margin-top: 13px;
+    padding: 10px 13px;
   }
 
   .trust-panel h2 {
-    display: none;
+    display: block;
+    margin-bottom: 6px;
+    font-size: 12px;
   }
 
   .trust-panel ul {
     grid-template-columns: 1fr 1fr;
     column-gap: 10px;
+    row-gap: 5px;
+  }
+
+  .trust-panel li {
+    font-size: 9px;
+    line-height: 1.3;
   }
 
   .funnel-disclaimer {
-    margin-top: 4px;
-    font-size: 6px;
+    margin-top: 8px;
+    font-size: 7px;
+    line-height: 1.25;
   }
 
   .header-call small {
-    font-size: 7px;
+    font-size: 8px;
   }
 }
 
