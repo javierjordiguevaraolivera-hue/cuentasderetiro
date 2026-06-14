@@ -1,36 +1,43 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CuentasDeRetiro.com
 
-## Getting Started
+Sitio público en Next.js 16 para `https://cuentasderetiro.com`, preparado para
+desplegarse en Vercel.
 
-First, run the development server:
+## Desarrollo
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Verificación del dominio en Meta
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+1. En Meta Business Manager, elige la verificación mediante meta tag.
+2. Copia únicamente el valor de `content`.
+3. Crea `META_DOMAIN_VERIFICATION` en Vercel para Production.
+4. Despliega de nuevo y solicita la verificación.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+El token se renderiza como:
 
-## Learn More
+```html
+<meta name="facebook-domain-verification" content="TOKEN" />
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Rutas públicas
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `/`: landing pública.
+- `/privacidad`: política de privacidad.
+- `/terminos`: términos y divulgaciones.
+- `/robots.txt`: acceso para crawlers, incluidos `facebookexternalhit` y `Facebot`.
+- `/sitemap.xml`: páginas indexables.
+- `/opengraph-image`: imagen social generada por Next.js.
+- `/meta.json`: manifiesto informativo propio; no es un requisito oficial de Meta.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Antes de captar leads
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+La versión actual no recopila ni transmite datos. Antes de añadir un formulario
+o Meta Pixel hay que definir el receptor de leads, consentimiento de contacto,
+campos mínimos, política de retención, mecanismo de exclusión y configuración
+de cookies aplicable. Nunca se deben enviar a Meta contraseñas, credenciales,
+datos bancarios, números completos de Seguro Social ni campos de texto libre
+que puedan contener información financiera sensible.
