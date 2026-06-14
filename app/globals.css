@@ -94,33 +94,13 @@ a {
 }
 
 .funnel-logo {
-  gap: 7px;
-  color: var(--blue-600);
-  line-height: 0.9;
+  flex: 0 0 auto;
 }
 
-.logo-symbol {
-  display: grid;
-  width: 31px;
-  height: 31px;
-  place-items: center;
-  border-radius: 50%;
-  background: #e4f4ff;
-}
-
-.logo-symbol svg {
-  width: 23px;
-  fill: var(--blue-500);
-}
-
-.funnel-logo span:last-child {
-  display: grid;
-  gap: 3px;
-  font-size: 10px;
-}
-
-.funnel-logo strong {
-  font-size: 12px;
+.funnel-logo-image {
+  display: block;
+  width: auto;
+  height: 54px;
 }
 
 .header-call {
@@ -637,13 +617,9 @@ a {
     padding-block: 6px;
   }
 
-  .logo-symbol {
-    width: 28px;
-    height: 28px;
-  }
-
-  .logo-symbol svg {
-    width: 20px;
+  .funnel-logo-image {
+    width: auto;
+    height: 52px;
   }
 
   .header-call {

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import retirementIllustration from "../public/media/imagen-ilustrativa-transparent.png";
+import retirementLogo from "../public/media/logo-cuentas-de-retiro.png";
 
 const retirementGoals = [
   {
@@ -64,16 +65,12 @@ export default function FunnelStepOne({
       <header className="funnel-header">
         <div className="funnel-bar-inner">
           <Link className="funnel-logo" href="/" aria-label="Cuentas de Retiro">
-            <span className="logo-symbol" aria-hidden="true">
-              <svg viewBox="0 0 32 32" role="img">
-                <path d="M5 25V12l11-7 11 7v13h-7v-8h-8v8H5Z" />
-                <path d="M3 26h26v3H3z" />
-              </svg>
-            </span>
-            <span>
-              <b>CUENTAS</b>
-              <strong>DE RETIRO</strong>
-            </span>
+            <Image
+              alt=""
+              className="funnel-logo-image"
+              priority
+              src={retirementLogo}
+            />
           </Link>
 
           <a className="header-call" href={phoneHref}>
