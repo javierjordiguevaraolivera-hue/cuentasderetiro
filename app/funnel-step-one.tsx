@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import retirementIllustration from "../public/media/imagen-ilustrativa-transparent.png";
 
 const retirementGoals = [
   {
@@ -29,21 +30,13 @@ const slotValues = Array.from({ length: 61 }, (_, index) => {
   return Math.round(20000 + 82000 * progress + irregularOffset);
 });
 
-const MAX_REEL_ADVANCE = slotValues.length * 10 + 100;
-
-const digitReel = Array.from({ length: MAX_REEL_ADVANCE }, (_, index) =>
-  String(index % 10),
-);
-
 function getSlotDigits(value: number) {
   return value.toString().padStart(6, " ").split("");
 }
 
-function getInitialReelPositions(value: number) {
-  return getSlotDigits(value).map((digit) =>
-    digit === " " ? 10 : Number(digit) + 10,
-  );
-}
+const slotReels = Array.from({ length: 6 }, (_, digitIndex) =>
+  slotValues.map((value) => getSlotDigits(value)[digitIndex]),
+);
 
 type FunnelStepOneProps = {
   phoneDisplay: string;
@@ -55,52 +48,6 @@ export default function FunnelStepOne({
   phoneHref,
 }: FunnelStepOneProps) {
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
-  const [slotValue, setSlotValue] = useState(slotValues[0]);
-  const [reelPositions, setReelPositions] = useState<(number | null)[]>(() =>
-    getInitialReelPositions(slotValues[0]),
-  );
-
-  useEffect(() => {
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      const reducedMotionTimer = window.setTimeout(() => {
-        const finalValue = slotValues.at(-1) ?? 102000;
-        setSlotValue(finalValue);
-        setReelPositions(getInitialReelPositions(finalValue));
-      }, 0);
-
-      return () => window.clearTimeout(reducedMotionTimer);
-    }
-
-    const timers = slotValues.slice(1).map((value, index) =>
-      window.setTimeout(
-        () => {
-          setSlotValue(value);
-          setReelPositions((currentPositions) =>
-            getSlotDigits(value).map((digit, digitIndex) => {
-              if (digit === " ") {
-                return null;
-              }
-
-              const targetDigit = Number(digit);
-              const currentPosition = currentPositions[digitIndex];
-
-              if (currentPosition === null || digit === " ") {
-                return targetDigit + 10;
-              }
-
-              const currentDigit = currentPosition % 10;
-              const distance = (targetDigit - currentDigit + 10) % 10;
-
-              return currentPosition + (distance || 10);
-            }),
-          );
-        },
-        ((index + 1) * 6000) / (slotValues.length - 1),
-      ),
-    );
-
-    return () => timers.forEach(window.clearTimeout);
-  }, []);
 
   function selectGoal(goal: (typeof retirementGoals)[number]) {
     setSelectedGoal(goal.id);
@@ -150,11 +97,9 @@ export default function FunnelStepOne({
               <Image
                 alt="Casa, árbol y alcancía protegidos por unas manos"
                 className="retirement-image"
-                height={198}
                 priority
                 sizes="(max-width: 519px) 36vw, 160px"
-                src="/media/imagen-ilustrativa-transparent.png"
-                width={168}
+                src={retirementIllustration}
               />
             </div>
 
@@ -179,22 +124,14 @@ export default function FunnelStepOne({
             <span className="price-odometer" aria-hidden="true">
               <span className="currency">$</span>
               <span className="odometer-digits">
-                {getSlotDigits(slotValue).map((digit, index) => (
+                {slotReels.map((reel, index) => (
                   <span className="odometer-group" key={index}>
                     <span className="odometer-column">
-                      {digit === " " ? null : (
-                        <span
-                          className="odometer-reel"
-                          style={{
-                            transform: `translateY(-${(reelPositions[index] ?? 0) * 30}px)`,
-                            transitionDuration: `${62 + index * 4}ms`,
-                          }}
-                        >
-                          {digitReel.map((reelDigit, reelIndex) => (
-                            <span key={reelIndex}>{reelDigit}</span>
-                          ))}
-                        </span>
-                      )}
+                      <span className="odometer-reel">
+                        {reel.map((reelDigit, reelIndex) => (
+                          <span key={reelIndex}>{reelDigit}</span>
+                        ))}
+                      </span>
                     </span>
                     {index === 2 ? (
                       <span className="odometer-separator">,</span>

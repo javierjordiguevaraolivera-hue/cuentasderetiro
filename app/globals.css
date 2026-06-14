@@ -190,11 +190,8 @@ a {
 
 .retirement-image {
   display: block;
-  width: auto;
-  height: 132px;
-  max-width: 100%;
-  object-fit: contain;
-  object-position: center;
+  width: min(118%, 176px);
+  height: auto;
   filter: drop-shadow(0 8px 10px rgb(0 0 0 / 20%));
 }
 
@@ -362,8 +359,7 @@ a {
   left: 0;
   display: flex;
   flex-direction: column;
-  transition-property: transform;
-  transition-timing-function: cubic-bezier(0.2, 0.75, 0.25, 1);
+  animation: spin-slot 2s steps(60, end) both;
   will-change: transform;
 }
 
@@ -375,6 +371,16 @@ a {
   font-size: 23px;
   font-weight: 900;
   line-height: 1;
+}
+
+@keyframes spin-slot {
+  from {
+    transform: translateY(0);
+  }
+
+  to {
+    transform: translateY(-1800px);
+  }
 }
 
 .odometer-separator {
@@ -655,9 +661,8 @@ a {
   }
 
   .retirement-image {
-    width: auto;
-    height: 116px;
-    max-width: 100%;
+    width: min(116%, 160px);
+    height: auto;
   }
 
   .hero-kicker {
@@ -770,9 +775,8 @@ a {
   }
 
   .retirement-image {
-    width: auto;
-    height: 92px;
-    max-width: 100%;
+    width: min(112%, 136px);
+    height: auto;
   }
 
   .hero-copy-block h1 {
@@ -866,6 +870,7 @@ a {
   }
 
   .odometer-reel {
-    transition: none !important;
+    animation: none;
+    transform: translateY(-1800px);
   }
 }
