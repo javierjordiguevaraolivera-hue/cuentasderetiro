@@ -8,15 +8,19 @@ import retirementLogo from "../public/media/logo-cuentas-de-retiro.png";
 const retirementGoals = [
   {
     id: "protect-savings",
-    label: "Proteger mis ahorros",
+    label: "Proteger a mi familia si no estoy",
   },
   {
     id: "grow-money",
-    label: "Hacer crecer mi dinero",
+    label: "Ahorrar mi dinero con intereses",
   },
   {
     id: "retirement-income",
-    label: "Generar ingresos al retirarme",
+    label: "Planificar mi retiro",
+  },
+  {
+    id: "not-sure",
+    label: "No estoy seguro aún",
   },
 ] as const;
 
@@ -130,13 +134,6 @@ export default function FunnelStepOne({
               <h2 id="step-one-title">
                 ¿Cuál es tu principal objetivo para el retiro?
               </h2>
-              <div className="progress-dots" aria-label="Paso 1 de 5">
-                <span className="active" />
-                <span />
-                <span />
-                <span />
-                <span />
-              </div>
             </div>
 
             <div className="answer-list">
@@ -153,10 +150,18 @@ export default function FunnelStepOne({
               ))}
             </div>
 
+            <div className="progress-dots" aria-label="Paso 1 de 5">
+              <span className="active" />
+              <span />
+              <span />
+              <span />
+              <span />
+            </div>
+
             <p className="selection-status" aria-live="polite">
               {selectedGoal
                 ? "Respuesta guardada. El siguiente paso se conectará aquí."
-                : "Selecciona una opción para continuar."}
+                : ""}
             </p>
           </section>
 

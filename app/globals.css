@@ -163,7 +163,7 @@ a {
   align-items: center;
   width: 90vw;
   max-width: none;
-  margin: 0 auto 26px;
+  margin: 0 auto 36px;
   padding-top: 8px;
   text-align: center;
 }
@@ -390,7 +390,8 @@ a {
 }
 
 .question-card {
-  max-width: 380px;
+  width: 90vw;
+  max-width: none;
   margin-inline: auto;
   border: 5px solid #9aaaba;
   border-radius: 15px;
@@ -410,23 +411,27 @@ a {
   margin: 0 0 4px;
   color: var(--blue-600);
   font-size: 10px;
-  font-weight: 850;
+  font-weight: 400;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
 .question-heading h2 {
-  max-width: 320px;
-  margin: 0 auto;
-  font-size: 15px;
-  line-height: 1.25;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  font-family: var(--font-lato), Arial, Helvetica, sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-wrap: balance;
 }
 
 .progress-dots {
   display: flex;
   justify-content: center;
   gap: 5px;
-  margin: 9px 0 12px;
+  margin: 10px 0 2px;
 }
 
 .progress-dots span {
@@ -443,6 +448,7 @@ a {
 .answer-list {
   display: grid;
   gap: 10px;
+  margin-top: 14px;
 }
 
 .answer-list button {
@@ -497,6 +503,10 @@ a {
   color: #65768a;
   font-size: 9px;
   text-align: center;
+}
+
+.selection-status:empty {
+  display: none;
 }
 
 .trust-panel {
@@ -674,7 +684,7 @@ a {
   .hero-lockup {
     width: 90vw;
     max-width: none;
-    margin-bottom: 20px;
+    margin-bottom: 28px;
     padding-top: 5px;
   }
 
@@ -720,15 +730,16 @@ a {
   }
 
   .question-heading h2 {
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .progress-dots {
-    margin: 6px 0 8px;
+    margin: 8px 0 1px;
   }
 
   .answer-list {
     gap: 7px;
+    margin-top: 10px;
   }
 
   .answer-list button {
@@ -783,7 +794,7 @@ a {
   .hero-lockup {
     width: 90vw;
     max-width: none;
-    margin-bottom: 16px;
+    margin-bottom: 22px;
     padding-top: 3px;
   }
 
@@ -836,21 +847,23 @@ a {
   }
 
   .question-card {
-    max-width: 360px;
+    width: 90vw;
+    max-width: none;
     padding-top: 10px;
     padding-bottom: 9px;
   }
 
   .question-heading h2 {
-    font-size: 14px;
+    font-size: 15px;
   }
 
   .progress-dots {
-    margin: 7px 0 10px;
+    margin: 8px 0 1px;
   }
 
   .answer-list {
     gap: 8px;
+    margin-top: 10px;
   }
 
   .answer-list button {
