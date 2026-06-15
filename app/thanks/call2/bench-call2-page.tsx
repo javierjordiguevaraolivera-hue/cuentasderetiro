@@ -144,12 +144,21 @@ function getVisiblePrintedPhoneNumber() {
 
 function getGoalLabel(goal: string) {
   const normalized = goal.trim().toLowerCase();
-  if (normalized === "grow-money") return "ahorro e inversión";
-  if (normalized === "retirement-income") {
+  if (normalized === "ahorrar e invertir" || normalized === "grow-money") {
+    return "ahorro e inversión";
+  }
+  if (
+    normalized === "planificación de retiro" ||
+    normalized === "retirement-income"
+  ) {
     return "planificación para tu jubilación";
   }
-  if (normalized === "not-sure") return "seguro de vida IUL";
-  if (normalized === "protect-savings") return "protección para tu familia";
+  if (normalized === "no estoy seguro aún" || normalized === "not-sure") {
+    return "seguro de vida IUL";
+  }
+  if (normalized === "seguro de vida" || normalized === "protect-savings") {
+    return "protección para tu familia";
+  }
   return normalized || "seguro de vida IUL";
 }
 

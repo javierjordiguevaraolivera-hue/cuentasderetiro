@@ -81,7 +81,7 @@ export async function POST(request: Request) {
     .from("ringba_call_events")
     .select("id")
     .eq("lead_id", leadId)
-    .eq("event_name", "printed_number_captured")
+    .in("event_name", ["printed_number_captured", "printed_number"])
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -89,7 +89,11 @@ export async function POST(request: Request) {
   if (existingEvent?.id) {
     const { error } = await supabase
       .from("ringba_call_events")
-      .update({ printed_number: printedNumber, raw_payload: rawPayload })
+      .update({
+        event_name: "printed_number_captured",
+        printed_number: printedNumber,
+        raw_payload: rawPayload,
+      })
       .eq("id", existingEvent.id);
 
     if (error) {

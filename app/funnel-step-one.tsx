@@ -12,21 +12,25 @@ const retirementGoals = [
   {
     id: "protect-savings",
     label: "Proteger a mi familia si no estoy",
+    value: "Seguro de vida",
     amount: 31000,
   },
   {
     id: "grow-money",
     label: "Ahorrar mi dinero con intereses",
+    value: "Ahorrar e invertir",
     amount: 29000,
   },
   {
     id: "retirement-income",
     label: "Planificar mi retiro",
+    value: "Planificación de retiro",
     amount: 32253,
   },
   {
     id: "not-sure",
     label: "No estoy seguro aún",
+    value: "No estoy seguro aún",
     amount: 27894,
   },
 ] as const;
@@ -547,18 +551,18 @@ export default function FunnelStepOne({
     const nextAmount = currentAmount + goal.amount;
     const stepCount = Math.max(1, Math.round(goal.amount / 1000));
 
-    setInsuranceGoal(goal.id);
+    setInsuranceGoal(goal.value);
     setOdometerValues(buildSlotValues(currentAmount, nextAmount, stepCount));
     setCurrentAmount(nextAmount);
     setOdometerRun((run) => run + 1);
-    sessionStorage.setItem("insurance_goal", goal.id);
+    sessionStorage.setItem("insurance_goal", goal.value);
     sessionStorage.setItem("insurance_goal_value", String(goal.amount));
     window.dispatchEvent(
       new CustomEvent("funnel:step-complete", {
         detail: {
           step: 1,
           funnel_id: funnelId,
-          insurance_goal: goal.id,
+          insurance_goal: goal.value,
           insurance_goal_value: goal.amount,
           projectedAmount: nextAmount,
         },
@@ -1135,7 +1139,7 @@ export default function FunnelStepOne({
                       {retirementGoals.map((goal) => (
                         <button
                           className={
-                            insurance_goal === goal.id ? "selected" : ""
+                            insurance_goal === goal.value ? "selected" : ""
                           }
                           key={goal.id}
                           onClick={() => selectGoal(goal)}
