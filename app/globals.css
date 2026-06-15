@@ -1307,6 +1307,14 @@ a {
   }
 }
 
+@media (min-width: 520px) {
+  .hero-lockup,
+  .question-card {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .question-step-content.entering-from-right {
     animation: none;
