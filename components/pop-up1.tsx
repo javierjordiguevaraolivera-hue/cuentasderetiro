@@ -91,7 +91,7 @@ export default function PopUp1({
   open,
   title,
   description,
-  primaryLabel = "Hablar con un asesor",
+  primaryLabel = "Llamar para agregar beneficiario",
   secondaryLabel = "Continuar con mi aplicación",
   leadId = "",
   applicationNumber = "",
@@ -386,27 +386,6 @@ export default function PopUp1({
           )}
         </h2>
 
-        {isQualificationComplete ? (
-          <div className="mx-auto mt-4 flex max-w-[300px] items-center justify-center gap-2 text-[#273449]">
-            <span className="relative flex h-7 w-8 shrink-0 items-center justify-center text-[#f5b800]">
-              <svg
-                aria-hidden="true"
-                className="absolute h-7 w-8"
-                fill="currentColor"
-                viewBox="0 0 24 22"
-              >
-                <path d="M10.3 2.8a2 2 0 0 1 3.4 0l9.1 15.4a2 2 0 0 1-1.7 3H2.9a2 2 0 0 1-1.7-3l9.1-15.4Z" />
-              </svg>
-              <span className="relative mt-1 text-[15px] font-black leading-none text-white">
-                !
-              </span>
-            </span>
-            <span className="text-[15px] font-black leading-tight">
-              No se agregó un beneficiario.
-            </span>
-          </div>
-        ) : null}
-
         {description ? (
           <p className="mt-4 text-[16px] leading-[1.45] text-[#5d6674]">
             {description}
@@ -479,7 +458,11 @@ export default function PopUp1({
         )}
 
         {showActions ? (
-          <div className="mt-6 grid animate-[fade-up_.35s_ease-out] gap-3">
+          <div className="mt-2 grid animate-[fade-up_.35s_ease-out] gap-1.5">
+            <p className="m-0 text-center text-[13px] font-normal text-[#ef4444]">
+              No se agregó un beneficiario.
+            </p>
+
             <a
               className="inline-flex min-h-[52px] items-center justify-center gap-2 rounded-full bg-[#16a34a] px-5 text-center text-[16px] font-black leading-none !text-white shadow-[0_10px_22px_rgba(22,163,74,0.24)] transition hover:bg-[#12813c] hover:!text-white"
               data-popup1-ringba-phone
