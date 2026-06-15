@@ -80,6 +80,66 @@ function buildSlotValues(start: number, end: number, stepCount: number) {
 
 const initialSlotValues = buildSlotValues(10000, 65000, 60);
 const zipCodeAmount = 5389;
+const nameAmount = 7894;
+const usRegionCodes = new Set([
+  "AK",
+  "AL",
+  "AR",
+  "AS",
+  "AZ",
+  "CA",
+  "CO",
+  "CT",
+  "DC",
+  "DE",
+  "FL",
+  "GA",
+  "GU",
+  "HI",
+  "IA",
+  "ID",
+  "IL",
+  "IN",
+  "KS",
+  "KY",
+  "LA",
+  "MA",
+  "MD",
+  "ME",
+  "MI",
+  "MN",
+  "MO",
+  "MP",
+  "MS",
+  "MT",
+  "NC",
+  "ND",
+  "NE",
+  "NH",
+  "NJ",
+  "NM",
+  "NV",
+  "NY",
+  "OH",
+  "OK",
+  "OR",
+  "PA",
+  "PR",
+  "RI",
+  "SC",
+  "SD",
+  "TN",
+  "TX",
+  "UM",
+  "UT",
+  "VA",
+  "VI",
+  "VT",
+  "WA",
+  "WI",
+  "WV",
+  "WY",
+]);
 
 function getSlotDigits(value: number) {
   return value.toString().padStart(6, " ").split("");
@@ -92,15 +152,22 @@ function getSlotReels(values: number[]) {
 }
 
 type FunnelStepOneProps = {
+  initialLocation: {
+    country: string | null;
+    state: string | null;
+    city: string | null;
+    postalCode: string | null;
+  };
   phoneDisplay: string;
   phoneHref: string;
 };
 
 export default function FunnelStepOne({
+  initialLocation,
   phoneDisplay,
   phoneHref,
 }: FunnelStepOneProps) {
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
   const [selectedAge, setSelectedAge] = useState<string | null>(null);
   const [zipCode, setZipCode] = useState("");
@@ -110,9 +177,22 @@ export default function FunnelStepOne({
   const [lastName, setLastName] = useState("");
   const [nameError, setNameError] = useState("");
   const [nameSubmitted, setNameSubmitted] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState("");
+  const [email, setEmail] = useState("");
+  const [contactError, setContactError] = useState("");
+  const [contactSubmitted, setContactSubmitted] = useState(false);
   const [currentAmount, setCurrentAmount] = useState(65000);
   const [odometerValues, setOdometerValues] = useState(initialSlotValues);
   const [odometerRun, setOdometerRun] = useState(0);
+  const detectedCountry = initialLocation.country?.toUpperCase() ?? null;
+  const detectedState = initialLocation.state?.toUpperCase() ?? null;
+  const detectedPostalCode = initialLocation.postalCode?.trim() ?? null;
+  const [resolvedState, setResolvedState] = useState(detectedState);
+  const [resolvedZipCode, setResolvedZipCode] = useState(detectedPostalCode);
+  const hasDetectedUsLocation =
+    detectedCountry === "US" &&
+    usRegionCodes.has(detectedState ?? "") &&
+    /^\d{5}$/.test(detectedPostalCode ?? "");
 
   function selectGoal(goal: (typeof retirementGoals)[number]) {
     const nextAmount = currentAmount + goal.amount;
@@ -140,8 +220,10 @@ export default function FunnelStepOne({
   function selectAge(ageRange: (typeof ageRanges)[number]) {
     if (selectedAge) return;
 
-    const nextAmount = currentAmount + ageRange.amount;
-    const stepCount = Math.max(1, Math.round(ageRange.amount / 1000));
+    const locationAmount = hasDetectedUsLocation ? zipCodeAmount : 0;
+    const addedAmount = ageRange.amount + locationAmount;
+    const nextAmount = currentAmount + addedAmount;
+    const stepCount = Math.max(1, Math.round(addedAmount / 1000));
 
     setSelectedAge(ageRange.id);
     setOdometerValues(buildSlotValues(currentAmount, nextAmount, stepCount));
@@ -149,6 +231,15 @@ export default function FunnelStepOne({
     setOdometerRun((run) => run + 1);
     sessionStorage.setItem("age_range", ageRange.id);
     sessionStorage.setItem("age_range_value", String(ageRange.amount));
+    if (detectedCountry) {
+      sessionStorage.setItem("geo_country", detectedCountry);
+    }
+    if (detectedState) {
+      sessionStorage.setItem("geo_state", detectedState);
+    }
+    if (initialLocation.city) {
+      sessionStorage.setItem("geo_city", initialLocation.city);
+    }
     window.dispatchEvent(
       new CustomEvent("funnel:step-complete", {
         detail: {
@@ -159,6 +250,33 @@ export default function FunnelStepOne({
         },
       }),
     );
+
+    if (hasDetectedUsLocation && detectedPostalCode) {
+      setZipCode(detectedPostalCode);
+      setResolvedZipCode(detectedPostalCode);
+      setResolvedState(detectedState);
+      setZipSubmitted(true);
+      sessionStorage.setItem("zip_code", detectedPostalCode);
+      sessionStorage.setItem("zip_code_source", "vercel");
+      sessionStorage.setItem("zip_code_value", String(zipCodeAmount));
+      window.dispatchEvent(
+        new CustomEvent("funnel:step-complete", {
+          detail: {
+            step: 3,
+            zipCode: detectedPostalCode,
+            zipCodeValue: zipCodeAmount,
+            zipCodeSource: "vercel",
+            country: detectedCountry,
+            state: detectedState,
+            city: initialLocation.city,
+            projectedAmount: nextAmount,
+          },
+        }),
+      );
+      setCurrentStep(4);
+      return;
+    }
+
     setCurrentStep(3);
   }
 
@@ -168,7 +286,7 @@ export default function FunnelStepOne({
     setZipSubmitted(false);
   }
 
-  function submitZipCode(event: FormEvent<HTMLFormElement>) {
+  async function submitZipCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (zipSubmitted) return;
@@ -182,20 +300,51 @@ export default function FunnelStepOne({
       return;
     }
 
+    let locationResponse: Response;
+
+    try {
+      locationResponse = await fetch("/api/location/resolve", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ zipCode }),
+      });
+    } catch {
+      setZipError("No pudimos validar el ZIP code. Intenta nuevamente.");
+      return;
+    }
+
+    if (!locationResponse.ok) {
+      setZipError("Ingresa un ZIP code válido de Estados Unidos.");
+      return;
+    }
+
+    const location = (await locationResponse.json()) as {
+      zipCode: string;
+      state: string;
+    };
     const nextAmount = currentAmount + zipCodeAmount;
     const stepCount = Math.max(1, Math.round(zipCodeAmount / 1000));
 
+    setZipCode(location.zipCode);
+    setResolvedZipCode(location.zipCode);
+    setResolvedState(location.state);
     setZipSubmitted(true);
     setOdometerValues(buildSlotValues(currentAmount, nextAmount, stepCount));
     setCurrentAmount(nextAmount);
     setOdometerRun((run) => run + 1);
-    sessionStorage.setItem("zip_code", zipCode);
+    sessionStorage.setItem("zip_code", location.zipCode);
+    sessionStorage.setItem("zip_code_source", "user");
     sessionStorage.setItem("zip_code_value", String(zipCodeAmount));
+    sessionStorage.setItem("geo_country", "US");
+    sessionStorage.setItem("geo_state", location.state);
     window.dispatchEvent(
       new CustomEvent("funnel:step-complete", {
         detail: {
           step: 3,
-          zipCode,
+          zipCode: location.zipCode,
+          state: location.state,
           zipCodeValue: zipCodeAmount,
           projectedAmount: nextAmount,
         },
@@ -243,14 +392,85 @@ export default function FunnelStepOne({
     setFirstName(cleanFirstName);
     setLastName(cleanLastName);
     setNameSubmitted(true);
+    const nextAmount = currentAmount + nameAmount;
+    const stepCount = Math.max(1, Math.round(nameAmount / 1000));
+
+    setOdometerValues(buildSlotValues(currentAmount, nextAmount, stepCount));
+    setCurrentAmount(nextAmount);
+    setOdometerRun((run) => run + 1);
     sessionStorage.setItem("first_name", cleanFirstName);
     sessionStorage.setItem("last_name", cleanLastName);
+    sessionStorage.setItem("name_value", String(nameAmount));
     window.dispatchEvent(
       new CustomEvent("funnel:step-complete", {
         detail: {
           step: 4,
           firstName: cleanFirstName,
           lastName: cleanLastName,
+          nameValue: nameAmount,
+          projectedAmount: nextAmount,
+        },
+      }),
+    );
+    setCurrentStep(5);
+  }
+
+  function updatePhoneNumber(value: string) {
+    let digits = value.replace(/\D/g, "");
+
+    if (digits.length > 10 && digits.startsWith("1")) {
+      digits = digits.slice(1);
+    }
+
+    setPhoneNumber(digits.slice(0, 10));
+    setContactError("");
+    setContactSubmitted(false);
+  }
+
+  function updateEmail(value: string) {
+    setEmail(value.trimStart().slice(0, 254));
+    setContactError("");
+    setContactSubmitted(false);
+  }
+
+  function submitContact(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (contactSubmitted) return;
+
+    const validPhonePattern = /^[2-9]\d{2}[2-9]\d{6}$/;
+    const validEmailPattern =
+      /^[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?(?:\.[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?)+$/i;
+    const cleanEmail = email.trim().toLowerCase();
+
+    if (!validPhonePattern.test(phoneNumber)) {
+      setContactError("Ingresa un número de teléfono válido de Estados Unidos.");
+      return;
+    }
+
+    if (!validEmailPattern.test(cleanEmail)) {
+      setContactError("Ingresa un email válido.");
+      return;
+    }
+
+    const normalizedPhone = `+1${phoneNumber}`;
+
+    setEmail(cleanEmail);
+    setContactSubmitted(true);
+    sessionStorage.setItem("phone_number", normalizedPhone);
+    sessionStorage.setItem("email", cleanEmail);
+    window.dispatchEvent(
+      new CustomEvent("funnel:step-complete", {
+        detail: {
+          step: 5,
+          phoneNumber: normalizedPhone,
+          email: cleanEmail,
+          country: "US",
+          state: resolvedState,
+          city: initialLocation.city,
+          zipCode: resolvedZipCode,
+          zipCodeSource: hasDetectedUsLocation ? "vercel" : "user",
+          projectedAmount: currentAmount,
         },
       }),
     );
@@ -416,7 +636,7 @@ export default function FunnelStepOne({
                       </p>
                     </form>
                   </>
-                ) : (
+                ) : currentStep === 4 ? (
                   <>
                     <h2 id="step-4-title">¿Cuál es tu nombre?</h2>
                     <form className="name-form" onSubmit={submitName}>
@@ -467,6 +687,69 @@ export default function FunnelStepOne({
                         {nameError ||
                           (nameSubmitted
                             ? "Nombre guardado correctamente."
+                            : "")}
+                      </p>
+                    </form>
+                  </>
+                ) : (
+                  <>
+                    <h2 id="step-5-title">¿Cómo podemos contactarte?</h2>
+                    <form className="contact-form" onSubmit={submitContact}>
+                      <label className="sr-only" htmlFor="phone-number">
+                        Número de teléfono de Estados Unidos
+                      </label>
+                      <div
+                        className={`phone-input-wrap${
+                          contactError ? " invalid" : ""
+                        }`}
+                      >
+                        <span aria-hidden="true">+1</span>
+                        <input
+                          aria-describedby={
+                            contactError ? "contact-error" : undefined
+                          }
+                          aria-invalid={Boolean(contactError)}
+                          autoComplete="tel-national"
+                          id="phone-number"
+                          inputMode="tel"
+                          maxLength={14}
+                          onChange={(event) =>
+                            updatePhoneNumber(event.target.value)
+                          }
+                          placeholder="Número de teléfono"
+                          type="tel"
+                          value={phoneNumber}
+                        />
+                      </div>
+                      <label className="sr-only" htmlFor="email">
+                        Email
+                      </label>
+                      <input
+                        aria-describedby={
+                          contactError ? "contact-error" : undefined
+                        }
+                        aria-invalid={Boolean(contactError)}
+                        autoComplete="email"
+                        id="email"
+                        maxLength={254}
+                        onChange={(event) => updateEmail(event.target.value)}
+                        placeholder="nombre@dominio.com"
+                        type="email"
+                        value={email}
+                      />
+                      <button type="submit">Continuar</button>
+                      <p
+                        className={
+                          contactError
+                            ? "form-feedback error"
+                            : "form-feedback"
+                        }
+                        id="contact-error"
+                        role={contactError ? "alert" : undefined}
+                      >
+                        {contactError ||
+                          (contactSubmitted
+                            ? "Información guardada correctamente."
                             : "")}
                       </p>
                     </form>
