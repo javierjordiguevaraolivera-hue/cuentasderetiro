@@ -1,9 +1,11 @@
 "use client";
 
 import type { CSSProperties, FormEvent } from "react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import PopUp1 from "../components/pop-up1";
+import { buildApplicationNumber } from "../lib/application-number";
 import retirementLogo from "../public/media/logo-cuentas-de-retiro.png";
 
 const retirementGoals = [
@@ -79,8 +81,33 @@ function buildSlotValues(start: number, end: number, stepCount: number) {
 }
 
 const initialSlotValues = buildSlotValues(10000, 65000, 60);
+const funnelId = "iul-v4";
 const zipCodeAmount = 5389;
 const nameAmount = 7894;
+const deviceStorageKey = "better-life-device-id";
+const deviceCookieName = "bf_iul_device_id";
+const deviceCookieDurationDays = 15;
+const submissionStorageKey = "bf_iul_v4_submission_id";
+const trustedFormScriptId = "trustedform-certify-sdk";
+const trustedFormFieldName =
+  process.env.NEXT_PUBLIC_TRUSTEDFORM_FIELD || "xxTrustedFormCertUrl";
+const validUsPhonePattern = /^[2-9]\d{2}[2-9]\d{6}$/;
+const emailLocalPattern = /^[A-Z0-9](?:[A-Z0-9._+%-]*[A-Z0-9])?$/i;
+const emailDomainLabelPattern = /^[A-Z0-9](?:[A-Z0-9-]*[A-Z0-9])?$/i;
+type RuntimeConfig = {
+  payPerCallStatus: string;
+  payPerCallStartTime: string;
+  payPerCallEndTime: string;
+  payPerCallPhoneNumber: string;
+  ringbaCampaignId: string;
+};
+const defaultRuntimeConfig: RuntimeConfig = {
+  payPerCallStatus: "OFF",
+  payPerCallStartTime: "",
+  payPerCallEndTime: "",
+  payPerCallPhoneNumber: "",
+  ringbaCampaignId: "",
+};
 const usRegionCodes = new Set([
   "AK",
   "AL",
@@ -141,6 +168,222 @@ const usRegionCodes = new Set([
   "WY",
 ]);
 
+function getNewYorkMinutes() {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).formatToParts(new Date());
+  const hour = Number(parts.find((part) => part.type === "hour")?.value);
+  const minute = Number(parts.find((part) => part.type === "minute")?.value);
+
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null;
+
+  return hour * 60 + minute;
+}
+
+function parseRuntimeTime(value: string) {
+  if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(value)) return null;
+
+  const [hour, minute] = value.split(":").map(Number);
+  return hour * 60 + minute;
+}
+
+function isWithinTimeWindow(current: number, start: number, end: number) {
+  if (start === end) return true;
+  if (start < end) return current >= start && current < end;
+  return current >= start || current < end;
+}
+
+function isPayPerCallWindowOpen(config: RuntimeConfig) {
+  if (config.payPerCallStatus !== "ON") return false;
+
+  const start = parseRuntimeTime(config.payPerCallStartTime);
+  const end = parseRuntimeTime(config.payPerCallEndTime);
+  const current = getNewYorkMinutes();
+
+  if (start == null || end == null || current == null) return false;
+
+  return isWithinTimeWindow(current, start, end);
+}
+
+function formatUsPhoneNumber(value: string) {
+  const digits = value.replace(/\D/g, "").slice(0, 10);
+
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3)}`;
+  }
+
+  return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
+function isVisiblyFakeUsPhone(value: string) {
+  const areaCode = value.slice(0, 3);
+  const exchange = value.slice(3, 6);
+
+  return (
+    areaCode === "555" ||
+    exchange === "555" ||
+    areaCode.endsWith("11") ||
+    exchange.endsWith("11") ||
+    /^(\d)\1{9}$/.test(value) ||
+    /^(\d{2})\1{4}$/.test(value) ||
+    /^(\d{5})\1$/.test(value) ||
+    ["0123456789", "1234567890", "9876543210"].includes(value) ||
+    value.split("").filter((digit) => digit === "0").length >= 7
+  );
+}
+
+function isValidUsPhone(value: string) {
+  return validUsPhonePattern.test(value) && !isVisiblyFakeUsPhone(value);
+}
+
+function isValidEmailAddress(value: string) {
+  const email = value.trim();
+  const atIndex = email.indexOf("@");
+
+  if (
+    !email ||
+    atIndex <= 0 ||
+    atIndex !== email.lastIndexOf("@") ||
+    email.length > 254
+  ) {
+    return false;
+  }
+
+  const localPart = email.slice(0, atIndex);
+  const domain = email.slice(atIndex + 1).toLowerCase();
+  const domainLabels = domain.split(".");
+  const topLevelDomain = domainLabels.at(-1) || "";
+
+  return (
+    localPart.length <= 64 &&
+    emailLocalPattern.test(localPart) &&
+    !localPart.includes("..") &&
+    domainLabels.length >= 2 &&
+    domainLabels.every(
+      (label) => label.length <= 63 && emailDomainLabelPattern.test(label),
+    ) &&
+    /^[a-z]{2,24}$/.test(topLevelDomain)
+  );
+}
+
+type ValidationStatus = "idle" | "validating" | "valid" | "invalid";
+
+function ValidationIndicator({ status }: { status: ValidationStatus }) {
+  if (status === "idle") return null;
+
+  if (status === "validating") {
+    return (
+      <span aria-label="Validando" className="field-validation-indicator">
+        <svg
+          aria-hidden="true"
+          className="validation-spinner"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            cx="12"
+            cy="12"
+            opacity="0.24"
+            r="8"
+            stroke="currentColor"
+            strokeWidth="3"
+          />
+          <path
+            d="M20 12a8 8 0 0 0-8-8"
+            stroke="currentColor"
+            strokeLinecap="round"
+            strokeWidth="3"
+          />
+        </svg>
+      </span>
+    );
+  }
+
+  if (status === "invalid") {
+    return (
+      <span aria-label="Dato inválido" className="field-validation-indicator invalid">
+        <svg aria-hidden="true" fill="none" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="9" />
+          <path d="m8.5 8.5 7 7M15.5 8.5l-7 7" />
+        </svg>
+      </span>
+    );
+  }
+
+  return (
+    <span aria-label="Dato protegido" className="field-validation-indicator valid">
+      <svg
+        aria-hidden="true"
+        className="validation-lock"
+        fill="currentColor"
+        viewBox="0 0 14 18"
+      >
+        <path d="M7 0a5 5 0 0 0-5 5v3H1a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1h-1V5a5 5 0 0 0-5-5Zm3 8H4V5a3 3 0 0 1 6 0v3Z" />
+      </svg>
+    </span>
+  );
+}
+
+function setDeviceCookie(deviceId: string) {
+  if (typeof document === "undefined" || !deviceId) return;
+
+  const maxAge = deviceCookieDurationDays * 24 * 60 * 60;
+  document.cookie = `${deviceCookieName}=${encodeURIComponent(
+    deviceId,
+  )}; Max-Age=${maxAge}; Path=/; SameSite=Lax`;
+}
+
+function getOrCreateDeviceId() {
+  if (typeof window === "undefined") return "";
+
+  const existing = window.localStorage.getItem(deviceStorageKey);
+  if (existing) {
+    setDeviceCookie(existing);
+    return existing;
+  }
+
+  const newId = `bm_${Date.now().toString(36)}_${Math.random()
+    .toString(36)
+    .slice(2, 10)}`;
+  window.localStorage.setItem(deviceStorageKey, newId);
+  setDeviceCookie(newId);
+  return newId;
+}
+
+function getTrustedFormCertUrl() {
+  if (typeof document === "undefined") return "";
+
+  const field = document.getElementsByName(
+    trustedFormFieldName,
+  )[0] as HTMLInputElement | undefined;
+  return field?.value?.trim() || "";
+}
+
+function getAdAccountName() {
+  if (typeof window === "undefined") return "";
+
+  return (
+    new URLSearchParams(window.location.search)
+      .get("adaccount_name")
+      ?.trim() || ""
+  );
+}
+
+function getOrCreateSubmissionId() {
+  if (typeof window === "undefined") return "";
+
+  const existing = window.sessionStorage.getItem(submissionStorageKey);
+  if (existing) return existing;
+
+  const submissionId = window.crypto.randomUUID();
+  window.sessionStorage.setItem(submissionStorageKey, submissionId);
+  return submissionId;
+}
+
 function getSlotDigits(value: number) {
   return value.toString().padStart(6, " ").split("");
 }
@@ -155,21 +398,24 @@ type FunnelStepOneProps = {
   initialLocation: {
     country: string | null;
     state: string | null;
+    stateName: string | null;
     city: string | null;
     postalCode: string | null;
   };
   phoneDisplay: string;
   phoneHref: string;
+  popupPreviewEnabled?: boolean;
 };
 
 export default function FunnelStepOne({
   initialLocation,
   phoneDisplay,
   phoneHref,
+  popupPreviewEnabled = false,
 }: FunnelStepOneProps) {
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
-  const [selectedGoal, setSelectedGoal] = useState<string | null>(null);
-  const [selectedAge, setSelectedAge] = useState<string | null>(null);
+  const [insurance_goal, setInsuranceGoal] = useState<string | null>(null);
+  const [age_group, setAgeGroup] = useState<string | null>(null);
   const [zipCode, setZipCode] = useState("");
   const [zipError, setZipError] = useState("");
   const [zipSubmitted, setZipSubmitted] = useState(false);
@@ -181,6 +427,18 @@ export default function FunnelStepOne({
   const [email, setEmail] = useState("");
   const [contactError, setContactError] = useState("");
   const [contactSubmitted, setContactSubmitted] = useState(false);
+  const [isSubmittingLead, setIsSubmittingLead] = useState(false);
+  const [submittedLeadId, setSubmittedLeadId] = useState("");
+  const [submittedContinueUrl, setSubmittedContinueUrl] = useState(
+    "/thanks/call2",
+  );
+  const [phoneValidationStatus, setPhoneValidationStatus] =
+    useState<ValidationStatus>("idle");
+  const [emailValidationStatus, setEmailValidationStatus] =
+    useState<ValidationStatus>("idle");
+  const [runtimeConfig, setRuntimeConfig] =
+    useState<RuntimeConfig>(defaultRuntimeConfig);
+  const [isPopupOpen, setIsPopupOpen] = useState(popupPreviewEnabled);
   const [currentAmount, setCurrentAmount] = useState(65000);
   const [odometerValues, setOdometerValues] = useState(initialSlotValues);
   const [odometerRun, setOdometerRun] = useState(0);
@@ -188,28 +446,120 @@ export default function FunnelStepOne({
   const detectedState = initialLocation.state?.toUpperCase() ?? null;
   const detectedPostalCode = initialLocation.postalCode?.trim() ?? null;
   const [resolvedState, setResolvedState] = useState(detectedState);
+  const [resolvedStateName, setResolvedStateName] = useState(
+    initialLocation.stateName,
+  );
   const [resolvedZipCode, setResolvedZipCode] = useState(detectedPostalCode);
+  const [resolvedCity, setResolvedCity] = useState(initialLocation.city);
+  const submitInFlightRef = useRef(false);
+  const submittedLeadIdRef = useRef("");
+  const runtimeConfigRef = useRef<RuntimeConfig>(defaultRuntimeConfig);
   const hasDetectedUsLocation =
     detectedCountry === "US" &&
     usRegionCodes.has(detectedState ?? "") &&
     /^\d{5}$/.test(detectedPostalCode ?? "");
+  const contactValidationMessage =
+    phoneValidationStatus === "invalid"
+      ? "Número inválido. Ingresa uno real."
+      : emailValidationStatus === "invalid"
+        ? "Email inválido. Corrígelo, por favor."
+        : contactError;
+
+  useEffect(() => {
+    getOrCreateDeviceId();
+
+    if (document.getElementById(trustedFormScriptId)) return;
+
+    const trustedFormScript = document.createElement("script");
+    trustedFormScript.id = trustedFormScriptId;
+    trustedFormScript.type = "text/javascript";
+    trustedFormScript.async = true;
+    trustedFormScript.src = `${
+      window.location.protocol
+    }//api.trustedform.com/trustedform.js?field=${encodeURIComponent(
+      trustedFormFieldName,
+    )}&use_tagged_consent=true&l=${Date.now()}${Math.random()}`;
+
+    const firstScript = document.getElementsByTagName("script")[0];
+    firstScript?.parentNode?.insertBefore(trustedFormScript, firstScript);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRuntimeConfig() {
+      try {
+        const response = await fetch("/api/runtime-config", {
+          cache: "no-store",
+        });
+        if (!response.ok) return;
+
+        const config = (await response.json()) as Partial<RuntimeConfig>;
+        const nextConfig = {
+          ...defaultRuntimeConfig,
+          ...Object.fromEntries(
+            Object.entries(config).filter(
+              ([, value]) => typeof value === "string" && value.trim(),
+            ),
+          ),
+        } as RuntimeConfig;
+        if (cancelled) return;
+
+        runtimeConfigRef.current = nextConfig;
+        setRuntimeConfig(nextConfig);
+      } catch {
+        // Keep the safe lead-flow defaults if runtime config is unavailable.
+      }
+    }
+
+    void loadRuntimeConfig();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (phoneNumber.length < 10) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setPhoneValidationStatus(
+        isValidUsPhone(phoneNumber) ? "valid" : "invalid",
+      );
+    }, 950);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [phoneNumber]);
+
+  useEffect(() => {
+    const cleanEmail = email.trim();
+    if (!cleanEmail) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setEmailValidationStatus(
+        isValidEmailAddress(cleanEmail) ? "valid" : "invalid",
+      );
+    }, 950);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [email]);
 
   function selectGoal(goal: (typeof retirementGoals)[number]) {
     const nextAmount = currentAmount + goal.amount;
     const stepCount = Math.max(1, Math.round(goal.amount / 1000));
 
-    setSelectedGoal(goal.id);
+    setInsuranceGoal(goal.id);
     setOdometerValues(buildSlotValues(currentAmount, nextAmount, stepCount));
     setCurrentAmount(nextAmount);
     setOdometerRun((run) => run + 1);
-    sessionStorage.setItem("retirement_goal", goal.id);
-    sessionStorage.setItem("retirement_goal_value", String(goal.amount));
+    sessionStorage.setItem("insurance_goal", goal.id);
+    sessionStorage.setItem("insurance_goal_value", String(goal.amount));
     window.dispatchEvent(
       new CustomEvent("funnel:step-complete", {
         detail: {
           step: 1,
-          retirementGoal: goal.id,
-          retirementGoalValue: goal.amount,
+          funnel_id: funnelId,
+          insurance_goal: goal.id,
+          insurance_goal_value: goal.amount,
           projectedAmount: nextAmount,
         },
       }),
@@ -218,19 +568,19 @@ export default function FunnelStepOne({
   }
 
   function selectAge(ageRange: (typeof ageRanges)[number]) {
-    if (selectedAge) return;
+    if (age_group) return;
 
     const locationAmount = hasDetectedUsLocation ? zipCodeAmount : 0;
     const addedAmount = ageRange.amount + locationAmount;
     const nextAmount = currentAmount + addedAmount;
     const stepCount = Math.max(1, Math.round(addedAmount / 1000));
 
-    setSelectedAge(ageRange.id);
+    setAgeGroup(ageRange.id);
     setOdometerValues(buildSlotValues(currentAmount, nextAmount, stepCount));
     setCurrentAmount(nextAmount);
     setOdometerRun((run) => run + 1);
-    sessionStorage.setItem("age_range", ageRange.id);
-    sessionStorage.setItem("age_range_value", String(ageRange.amount));
+    sessionStorage.setItem("age_group", ageRange.id);
+    sessionStorage.setItem("age_group_value", String(ageRange.amount));
     if (detectedCountry) {
       sessionStorage.setItem("geo_country", detectedCountry);
     }
@@ -244,8 +594,9 @@ export default function FunnelStepOne({
       new CustomEvent("funnel:step-complete", {
         detail: {
           step: 2,
-          ageRange: ageRange.id,
-          ageRangeValue: ageRange.amount,
+          funnel_id: funnelId,
+          age_group: ageRange.id,
+          age_group_value: ageRange.amount,
           projectedAmount: nextAmount,
         },
       }),
@@ -280,20 +631,20 @@ export default function FunnelStepOne({
     setCurrentStep(3);
   }
 
-  function updateZipCode(value: string) {
-    setZipCode(value.replace(/\D/g, "").slice(0, 5));
-    setZipError("");
-    setZipSubmitted(false);
-  }
-
   async function submitZipCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     if (zipSubmitted) return;
 
-    const numericZip = Number(zipCode);
+    const formData = new FormData(event.currentTarget);
+    const submittedZip = String(formData.get("zipCode") ?? "")
+      .replace(/\D/g, "")
+      .slice(0, 5);
+    const numericZip = Number(submittedZip);
     const isValidUsZip =
-      /^\d{5}$/.test(zipCode) && numericZip >= 501 && numericZip <= 99950;
+      /^\d{5}$/.test(submittedZip) &&
+      numericZip >= 501 &&
+      numericZip <= 99950;
 
     if (!isValidUsZip) {
       setZipError("Ingresa un ZIP code válido de 5 dígitos.");
@@ -308,7 +659,7 @@ export default function FunnelStepOne({
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ zipCode }),
+        body: JSON.stringify({ zipCode: submittedZip }),
       });
     } catch {
       setZipError("No pudimos validar el ZIP code. Intenta nuevamente.");
@@ -323,6 +674,9 @@ export default function FunnelStepOne({
     const location = (await locationResponse.json()) as {
       zipCode: string;
       state: string;
+      stateName: string;
+      city: string;
+      locationText: string;
     };
     const nextAmount = currentAmount + zipCodeAmount;
     const stepCount = Math.max(1, Math.round(zipCodeAmount / 1000));
@@ -330,6 +684,8 @@ export default function FunnelStepOne({
     setZipCode(location.zipCode);
     setResolvedZipCode(location.zipCode);
     setResolvedState(location.state);
+    setResolvedStateName(location.stateName);
+    setResolvedCity(location.city);
     setZipSubmitted(true);
     setOdometerValues(buildSlotValues(currentAmount, nextAmount, stepCount));
     setCurrentAmount(nextAmount);
@@ -339,12 +695,15 @@ export default function FunnelStepOne({
     sessionStorage.setItem("zip_code_value", String(zipCodeAmount));
     sessionStorage.setItem("geo_country", "US");
     sessionStorage.setItem("geo_state", location.state);
+    sessionStorage.setItem("geo_city", location.city);
     window.dispatchEvent(
       new CustomEvent("funnel:step-complete", {
         detail: {
           step: 3,
           zipCode: location.zipCode,
           state: location.state,
+          city: location.city,
+          locationText: location.locationText,
           zipCodeValue: zipCodeAmount,
           projectedAmount: nextAmount,
         },
@@ -418,62 +777,239 @@ export default function FunnelStepOne({
   function updatePhoneNumber(value: string) {
     let digits = value.replace(/\D/g, "");
 
-    if (digits.length > 10 && digits.startsWith("1")) {
+    if (digits.startsWith("1")) {
       digits = digits.slice(1);
     }
 
-    setPhoneNumber(digits.slice(0, 10));
+    const nextPhoneNumber = digits.slice(0, 10);
+    setPhoneNumber(nextPhoneNumber);
+    setPhoneValidationStatus(
+      nextPhoneNumber.length === 10 ? "validating" : "idle",
+    );
     setContactError("");
     setContactSubmitted(false);
   }
 
   function updateEmail(value: string) {
-    setEmail(value.trimStart().slice(0, 254));
+    const nextEmail = value.trimStart().slice(0, 254);
+    setEmail(nextEmail);
+    setEmailValidationStatus(nextEmail.trim() ? "validating" : "idle");
     setContactError("");
     setContactSubmitted(false);
   }
 
-  function submitContact(event: FormEvent<HTMLFormElement>) {
+  async function submitContact(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (contactSubmitted) return;
+    if (submitInFlightRef.current) return;
+    if (submittedLeadIdRef.current || submittedLeadId) {
+      if (isPayPerCallWindowOpen(runtimeConfigRef.current)) {
+        setIsPopupOpen(true);
+      }
+      return;
+    }
 
-    const validPhonePattern = /^[2-9]\d{2}[2-9]\d{6}$/;
-    const validEmailPattern =
-      /^[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?(?:\.[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?)+$/i;
     const cleanEmail = email.trim().toLowerCase();
 
-    if (!validPhonePattern.test(phoneNumber)) {
+    if (!isValidUsPhone(phoneNumber)) {
+      setPhoneValidationStatus("invalid");
       setContactError("Ingresa un número de teléfono válido de Estados Unidos.");
       return;
     }
 
-    if (!validEmailPattern.test(cleanEmail)) {
+    if (!isValidEmailAddress(cleanEmail)) {
+      setEmailValidationStatus("invalid");
       setContactError("Ingresa un email válido.");
       return;
     }
 
-    const normalizedPhone = `+1${phoneNumber}`;
+    if (
+      !insurance_goal ||
+      !age_group ||
+      !resolvedState ||
+      !resolvedZipCode
+    ) {
+      setContactError("No pudimos completar tu ubicación. Intenta nuevamente.");
+      return;
+    }
 
-    setEmail(cleanEmail);
-    setContactSubmitted(true);
-    sessionStorage.setItem("phone_number", normalizedPhone);
-    sessionStorage.setItem("email", cleanEmail);
-    window.dispatchEvent(
-      new CustomEvent("funnel:step-complete", {
-        detail: {
-          step: 5,
-          phoneNumber: normalizedPhone,
-          email: cleanEmail,
-          country: "US",
-          state: resolvedState,
-          city: initialLocation.city,
-          zipCode: resolvedZipCode,
-          zipCodeSource: hasDetectedUsLocation ? "vercel" : "user",
-          projectedAmount: currentAmount,
-        },
-      }),
-    );
+    submitInFlightRef.current = true;
+    setIsSubmittingLead(true);
+    setContactError("");
+
+    try {
+      let city = resolvedCity?.trim() || "";
+      let finalState = resolvedState;
+      let finalStateName = resolvedStateName?.trim() || "";
+      let finalZipCode = resolvedZipCode;
+      let locationText =
+        city && finalStateName ? `${city}, ${finalStateName}` : "";
+
+      if (!locationText) {
+        const locationResponse = await fetch("/api/location/resolve", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ zipCode: resolvedZipCode }),
+        });
+
+        if (locationResponse.ok) {
+          const location = (await locationResponse.json()) as {
+            city?: string;
+            state?: string;
+            stateName?: string;
+            zipCode?: string;
+            locationText?: string;
+          };
+          city = location.city?.trim() || city;
+          finalState = location.state || finalState;
+          finalStateName = location.stateName || finalStateName;
+          finalZipCode = location.zipCode || finalZipCode;
+          locationText =
+            location.locationText ||
+            (city && finalStateName ? `${city}, ${finalStateName}` : "");
+          setResolvedCity(city || null);
+          setResolvedState(finalState);
+          setResolvedStateName(finalStateName);
+          setResolvedZipCode(finalZipCode);
+        }
+      }
+
+      if (!locationText) {
+        setContactError("No pudimos completar tu ubicación. Intenta nuevamente.");
+        return;
+      }
+
+      const deviceId = getOrCreateDeviceId();
+      const trustedFormCertUrl = getTrustedFormCertUrl();
+      const submissionId = getOrCreateSubmissionId();
+      const activeRuntimeConfig = runtimeConfigRef.current;
+      const shouldUsePayPerCall =
+        isPayPerCallWindowOpen(activeRuntimeConfig);
+      const salePath: "call" | "lead" = shouldUsePayPerCall
+        ? "call"
+        : "lead";
+      const response = await fetch("/api/lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          page: "/iul-v4",
+          answers: {
+            ageGroup: age_group,
+            insuranceGoal: insurance_goal,
+            state: finalState,
+            firstName: firstName.trim(),
+            lastName: lastName.trim(),
+            phoneNumber,
+            email: cleanEmail,
+            locationText,
+            zipCode: finalZipCode,
+          },
+          meta: {
+            deviceId,
+            trustedFormCertUrl,
+            salePath,
+            adaccountName: getAdAccountName(),
+            leadUrl: window.location.href,
+            submissionId,
+          },
+        }),
+      });
+
+      const responseBody = (await response.json().catch(() => null)) as {
+        error?: string;
+        leadId?: string;
+      } | null;
+
+      if (!response.ok || !responseBody?.leadId) {
+        throw new Error(
+          responseBody?.error || "No pudimos guardar tu información.",
+        );
+      }
+
+      const leadId = responseBody.leadId;
+      submittedLeadIdRef.current = leadId;
+      setSubmittedLeadId(leadId);
+      setEmail(cleanEmail);
+      setContactSubmitted(true);
+      sessionStorage.setItem("sale_path", salePath);
+      sessionStorage.setItem(
+        "lead_status",
+        salePath === "call" ? "pending_call" : "ready_for_sell",
+      );
+      sessionStorage.setItem("lead_id", leadId);
+      sessionStorage.setItem("phone_number", phoneNumber);
+      sessionStorage.setItem("email", cleanEmail);
+      window.dispatchEvent(
+        new CustomEvent("funnel:step-complete", {
+          detail: {
+            step: 5,
+            funnel_id: funnelId,
+            insurance_goal,
+            age_group,
+            state: finalState,
+            zip_code: finalZipCode,
+            location_text: locationText,
+            first_name: firstName,
+            last_name: lastName,
+            phone_number: phoneNumber,
+            email: cleanEmail,
+            device_id: deviceId,
+            trustedform_cert_url: trustedFormCertUrl,
+            lead_id: leadId,
+            salePath,
+            lead_status:
+              salePath === "call" ? "pending_call" : "ready_for_sell",
+            pay_per_call_phone_number:
+              activeRuntimeConfig.payPerCallPhoneNumber,
+            ringba_campaign_id: activeRuntimeConfig.ringbaCampaignId,
+            country: "US",
+            city,
+            zipCodeSource: hasDetectedUsLocation ? "vercel" : "user",
+            projectedAmount: currentAmount,
+          },
+        }),
+      );
+
+      const nextParams = new URLSearchParams(window.location.search);
+      nextParams.set("funnel_id", funnelId);
+      nextParams.set("lead_id", leadId);
+      nextParams.set("first_name", firstName.trim());
+      nextParams.set("insurance_goal", insurance_goal);
+      nextParams.set("age_group", age_group);
+      nextParams.set("application_number", buildApplicationNumber(leadId));
+      if (activeRuntimeConfig.payPerCallPhoneNumber) {
+        nextParams.set(
+          "ppc_phone",
+          activeRuntimeConfig.payPerCallPhoneNumber,
+        );
+      }
+      if (activeRuntimeConfig.ringbaCampaignId) {
+        nextParams.set(
+          "ringba_campaign_id",
+          activeRuntimeConfig.ringbaCampaignId,
+        );
+      }
+      const nextSearch = nextParams.toString()
+        ? `?${nextParams.toString()}`
+        : "";
+
+      if (shouldUsePayPerCall) {
+        setSubmittedContinueUrl(`/thanks/call2${nextSearch}`);
+        setIsPopupOpen(true);
+        return;
+      }
+
+      window.location.assign(`/thanks/lead${nextSearch}`);
+    } catch (error) {
+      setContactError(
+        error instanceof Error
+          ? error.message
+          : "No pudimos guardar tu información. Intenta nuevamente.",
+      );
+    } finally {
+      submitInFlightRef.current = false;
+      setIsSubmittingLead(false);
+    }
   }
 
   const slotReels = getSlotReels(odometerValues);
@@ -485,6 +1021,28 @@ export default function FunnelStepOne({
 
   return (
     <main className="funnel-page">
+      <PopUp1
+        applicationNumber={buildApplicationNumber(submittedLeadId)}
+        continueUrl={submittedContinueUrl}
+        firstName={firstName}
+        goal={insurance_goal || ""}
+        leadId={submittedLeadId}
+        onClose={() => setIsPopupOpen(false)}
+        open={isPopupOpen}
+        phoneNumber={
+          runtimeConfig.payPerCallPhoneNumber ||
+          phoneHref.replace(/^tel:/, "")
+        }
+        ringbaCampaignId={runtimeConfig.ringbaCampaignId}
+        ringbaTags={{
+          funnel_id: funnelId,
+          lead_id: submittedLeadId,
+          iul_v4_age_group: age_group || "",
+          iul_v4_insurance_goal: insurance_goal || "",
+          ...(popupPreviewEnabled ? { preview: "1" } : {}),
+        }}
+      />
+
       <header className="funnel-header">
         <div className="funnel-bar-inner">
           <Link className="funnel-logo" href="/" aria-label="Cuentas de Retiro">
@@ -562,7 +1120,9 @@ export default function FunnelStepOne({
             <div className="question-stage">
               <div
                 className={`question-step-content${
-                  currentStep > 1 ? " entering-from-right" : ""
+                  currentStep > 1 && currentStep !== 3
+                    ? " entering-from-right"
+                    : ""
                 }`}
                 key={currentStep}
               >
@@ -575,7 +1135,7 @@ export default function FunnelStepOne({
                       {retirementGoals.map((goal) => (
                         <button
                           className={
-                            selectedGoal === goal.id ? "selected" : ""
+                            insurance_goal === goal.id ? "selected" : ""
                           }
                           key={goal.id}
                           onClick={() => selectGoal(goal)}
@@ -594,7 +1154,7 @@ export default function FunnelStepOne({
                       {ageRanges.map((ageRange) => (
                         <button
                           className={
-                            selectedAge === ageRange.id ? "selected" : ""
+                            age_group === ageRange.id ? "selected" : ""
                           }
                           key={ageRange.id}
                           onClick={() => selectAge(ageRange)}
@@ -616,14 +1176,23 @@ export default function FunnelStepOne({
                         aria-describedby={zipError ? "zip-error" : undefined}
                         aria-invalid={Boolean(zipError)}
                         autoComplete="postal-code"
+                        defaultValue={zipCode}
                         id="zip-code"
                         inputMode="numeric"
                         maxLength={5}
-                        onChange={(event) => updateZipCode(event.target.value)}
+                        name="zipCode"
+                        onInput={(event) => {
+                          const input = event.currentTarget;
+                          input.value = input.value
+                            .replace(/\D/g, "")
+                            .slice(0, 5);
+
+                          if (zipError) setZipError("");
+                          if (zipSubmitted) setZipSubmitted(false);
+                        }}
                         pattern="[0-9]{5}"
                         placeholder="Ej. 33101"
                         type="text"
-                        value={zipCode}
                       />
                       <button type="submit">Continuar</button>
                       <p
@@ -694,60 +1263,89 @@ export default function FunnelStepOne({
                 ) : (
                   <>
                     <h2 id="step-5-title">¿Cómo podemos contactarte?</h2>
-                    <form className="contact-form" onSubmit={submitContact}>
+                    <form
+                      className="contact-form"
+                      data-tf-element-role="offer"
+                      onSubmit={submitContact}
+                    >
+                      <input type="hidden" name={trustedFormFieldName} />
                       <label className="sr-only" htmlFor="phone-number">
                         Número de teléfono de Estados Unidos
                       </label>
                       <div
-                        className={`phone-input-wrap${
-                          contactError ? " invalid" : ""
+                        className={`phone-input-wrap validation-${phoneValidationStatus}${
+                          phoneValidationStatus === "invalid" ? " invalid" : ""
                         }`}
                       >
-                        <span aria-hidden="true">+1</span>
+                        <span aria-hidden="true" className="phone-country-code">
+                          +1
+                        </span>
                         <input
                           aria-describedby={
                             contactError ? "contact-error" : undefined
                           }
-                          aria-invalid={Boolean(contactError)}
+                          aria-invalid={phoneValidationStatus === "invalid"}
                           autoComplete="tel-national"
                           id="phone-number"
                           inputMode="tel"
                           maxLength={14}
+                          onBlur={() => {
+                            if (
+                              phoneNumber.length > 0 &&
+                              phoneNumber.length < 10
+                            ) {
+                              setPhoneValidationStatus("invalid");
+                            }
+                          }}
                           onChange={(event) =>
                             updatePhoneNumber(event.target.value)
                           }
-                          placeholder="Número de teléfono"
+                          placeholder="(202) 555-0147"
                           type="tel"
-                          value={phoneNumber}
+                          value={formatUsPhoneNumber(phoneNumber)}
                         />
+                        <ValidationIndicator status={phoneValidationStatus} />
                       </div>
                       <label className="sr-only" htmlFor="email">
                         Email
                       </label>
-                      <input
-                        aria-describedby={
-                          contactError ? "contact-error" : undefined
-                        }
-                        aria-invalid={Boolean(contactError)}
-                        autoComplete="email"
-                        id="email"
-                        maxLength={254}
-                        onChange={(event) => updateEmail(event.target.value)}
-                        placeholder="nombre@dominio.com"
-                        type="email"
-                        value={email}
-                      />
-                      <button type="submit">Continuar</button>
+                      <div
+                        className={`email-input-wrap validation-${emailValidationStatus}${
+                          emailValidationStatus === "invalid" ? " invalid" : ""
+                        }`}
+                      >
+                        <input
+                          aria-describedby={
+                            contactError ? "contact-error" : undefined
+                          }
+                          aria-invalid={emailValidationStatus === "invalid"}
+                          autoComplete="email"
+                          id="email"
+                          maxLength={254}
+                          onChange={(event) => updateEmail(event.target.value)}
+                          placeholder="nombre@dominio.com"
+                          type="email"
+                          value={email}
+                        />
+                        <ValidationIndicator status={emailValidationStatus} />
+                      </div>
+                      <button
+                        data-tf-element-role="submit"
+                        disabled={isSubmittingLead || contactSubmitted}
+                        type="submit"
+                      >
+                        {isSubmittingLead ? "Guardando..." : "Continuar"}
+                      </button>
                       <p
                         className={
-                          contactError
+                          contactValidationMessage
                             ? "form-feedback error"
                             : "form-feedback"
                         }
                         id="contact-error"
-                        role={contactError ? "alert" : undefined}
+                        role={contactValidationMessage ? "alert" : undefined}
                       >
-                        {contactError ||
+                        {contactValidationMessage ||
                           (contactSubmitted
                             ? "Información guardada correctamente."
                             : "")}
@@ -771,25 +1369,49 @@ export default function FunnelStepOne({
             </div>
           </section>
 
-          <aside className="trust-panel">
-            <h2>Más que solo un seguro aislado</h2>
-            <ul>
-              <li>Protege a tu familia con hasta $350,000</li>
-              <li>Asegura tu casa con Mortgage Protection</li>
-              <li>Haz crecer tus ahorros para tu jubilación</li>
-              <li>Disfruta de tu seguro en vida con tu familia</li>
-            </ul>
-          </aside>
+          {currentStep === 5 ? (
+            <p
+              className="tcpa-consent tcpa-consent-outside"
+              data-tf-element-role="consent-language"
+            >
+              Al hacer clic en <strong>“Continuar”</strong>, doy mi
+              consentimiento expreso por escrito y mi firma electrónica para
+              que <strong>Sunnel LLC</strong> (better-life), sus socios de
+              mercadeo, aseguradoras licenciadas y quienes actúen en su nombre
+              me contacten al teléfono y correo proporcionados, incluso si
+              figuran en una lista “No Llamar”, para ofrecer seguros de vida,
+              IUL, gastos finales y productos financieros relacionados. Las
+              comunicaciones pueden utilizar marcación automática, marcadores
+              predictivos, voz pregrabada o artificial, IA y SMS automatizados.
+              Pueden aplicar tarifas de mensajes y datos. Este consentimiento
+              no es condición de compra y puede revocarse en cualquier momento.
+              He leído y acepto la{" "}
+              <Link href="/privacidad">Política de Privacidad</Link> y los{" "}
+              <Link href="/terminos">Términos de Uso</Link>.
+            </p>
+          ) : (
+            <>
+              <aside className="trust-panel">
+                <h2>Más que solo un seguro aislado</h2>
+                <ul>
+                  <li>Protege a tu familia con hasta $350,000</li>
+                  <li>Asegura tu casa con Mortgage Protection</li>
+                  <li>Haz crecer tus ahorros para tu jubilación</li>
+                  <li>Disfruta de tu seguro en vida con tu familia</li>
+                </ul>
+              </aside>
 
-          <p className="funnel-disclaimer">
-            CuentasDeRetiro.com ofrece información educativa general y
-            resultados simulados a tasas fijas en escenarios optimistas para
-            ilustrar el potencial de crecimiento con un seguro de tipo IUL. No
-            somos una agencia gubernamental, institución financiera, fiduciario
-            ni asesor de inversiones. Para tener costos y beneficios reales es
-            necesario consultar con un agente licenciado y autorizado por el
-            estado.
-          </p>
+              <p className="funnel-disclaimer">
+                CuentasDeRetiro.com ofrece información educativa general y
+                resultados simulados a tasas fijas en escenarios optimistas
+                para ilustrar el potencial de crecimiento con un seguro de tipo
+                IUL. No somos una agencia gubernamental, institución financiera,
+                fiduciario ni asesor de inversiones. Para tener costos y
+                beneficios reales es necesario consultar con un agente
+                licenciado y autorizado por el estado.
+              </p>
+            </>
+          )}
         </section>
 
       </div>

@@ -454,12 +454,10 @@ a {
 
 @keyframes question-step-enter {
   from {
-    opacity: 0;
     transform: translateX(42px);
   }
 
   to {
-    opacity: 1;
     transform: translateX(0);
   }
 }
@@ -558,7 +556,8 @@ a {
 
 .name-form input,
 .contact-form > input,
-.phone-input-wrap input {
+.phone-input-wrap input,
+.email-input-wrap input {
   padding-inline: 16px;
   font-size: 18px;
   letter-spacing: 0;
@@ -580,7 +579,18 @@ a {
   overflow: hidden;
 }
 
-.phone-input-wrap > span {
+.email-input-wrap {
+  position: relative;
+  display: flex;
+  height: 58px;
+  align-items: center;
+  border: 2px solid #aab8c6;
+  border-radius: 7px;
+  background: var(--white);
+  overflow: hidden;
+}
+
+.phone-country-code {
   display: grid;
   height: 100%;
   min-width: 48px;
@@ -592,7 +602,8 @@ a {
   font-weight: 700;
 }
 
-.phone-input-wrap input {
+.phone-input-wrap input,
+.email-input-wrap input {
   width: 100%;
   min-width: 0;
   height: 100%;
@@ -603,13 +614,101 @@ a {
   outline: none;
 }
 
-.phone-input-wrap:focus-within {
+.phone-input-wrap input,
+.email-input-wrap input {
+  padding-right: 46px;
+}
+
+.phone-input-wrap:focus-within,
+.email-input-wrap:focus-within {
   border-color: var(--blue-500);
   box-shadow: 0 0 0 3px rgb(36 136 237 / 20%);
 }
 
-.phone-input-wrap.invalid {
+.phone-input-wrap.invalid,
+.email-input-wrap.invalid {
   border-color: #c53f31;
+  box-shadow: 0 0 0 3px rgb(197 63 49 / 14%);
+}
+
+.phone-input-wrap.validation-valid,
+.email-input-wrap.validation-valid {
+  border-color: #3aa96b;
+}
+
+.field-validation-indicator {
+  position: absolute;
+  right: 10px;
+  display: grid;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  place-items: center;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.phone-input-wrap .field-validation-indicator {
+  position: relative;
+  right: 9px;
+}
+
+.field-validation-indicator.valid {
+  color: #16934f;
+}
+
+.field-validation-indicator.invalid {
+  color: #d13f3f;
+}
+
+.field-validation-indicator.invalid svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentcolor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.2;
+}
+
+.validation-lock {
+  width: 11.2px;
+  height: 14.4px;
+  fill: currentcolor;
+}
+
+.field-validation-indicator.invalid svg {
+  width: 18px;
+  height: 18px;
+}
+
+.field-validation-indicator.valid {
+  animation: field-validation-pop 220ms ease-out;
+}
+
+.validation-spinner {
+  width: 18px;
+  height: 18px;
+  color: #94a3b8;
+  animation: field-validation-spin 550ms linear infinite;
+}
+
+@keyframes field-validation-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes field-validation-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.72);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .zip-form input::placeholder,
@@ -651,13 +750,49 @@ a {
   text-transform: uppercase;
 }
 
+.contact-form button:disabled {
+  cursor: wait;
+  filter: saturate(0.75);
+  opacity: 0.72;
+}
+
 .zip-feedback,
 .form-feedback {
   min-height: 14px;
   margin: 0;
   color: #35733a;
   font-size: 11px;
+  line-height: 1.2;
   text-align: center;
+  white-space: nowrap;
+}
+
+.tcpa-consent {
+  margin: 0;
+  color: #657386;
+  font-size: 9px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.tcpa-consent a {
+  color: #41556e;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.tcpa-consent-outside {
+  width: 90vw;
+  max-width: 390px;
+  margin: 28px auto 0;
+  color: rgb(255 255 255 / 78%);
+  font-size: 9px;
+  line-height: 1.4;
+}
+
+.tcpa-consent-outside a {
+  color: #ffffff;
 }
 
 .zip-feedback.error,
@@ -942,7 +1077,8 @@ a {
   .zip-form input,
   .name-form input,
   .contact-form > input,
-  .phone-input-wrap {
+  .phone-input-wrap,
+  .email-input-wrap {
     height: 52px;
   }
 
@@ -1095,14 +1231,16 @@ a {
   .zip-form input,
   .name-form input,
   .contact-form > input,
-  .phone-input-wrap {
+  .phone-input-wrap,
+  .email-input-wrap {
     height: 48px;
     font-size: 21px;
   }
 
   .name-form input,
   .contact-form > input,
-  .phone-input-wrap input {
+  .phone-input-wrap input,
+  .email-input-wrap input {
     font-size: 16px;
   }
 
@@ -1162,4 +1300,111 @@ a {
     animation: none;
     transform: translateY(var(--odometer-distance));
   }
+}
+
+.thanks-page {
+  display: grid;
+  min-height: 100svh;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 20% 10%, rgb(40 142 241 / 45%), transparent 32%),
+    linear-gradient(145deg, #0d4b9d, var(--navy-950));
+}
+
+.thanks-card {
+  width: min(100%, 440px);
+  border-radius: 18px;
+  padding: 32px 24px;
+  background: var(--white);
+  box-shadow: 0 20px 45px rgb(0 0 0 / 28%);
+  text-align: center;
+}
+
+.thanks-kicker {
+  margin: 0 0 8px;
+  color: var(--blue-600);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.thanks-card h1 {
+  margin: 0;
+  color: var(--navy-900);
+  font-family: var(--font-lato), Arial, Helvetica, sans-serif;
+  font-size: clamp(28px, 8vw, 40px);
+  line-height: 1;
+}
+
+.thanks-card p:not(.thanks-kicker) {
+  margin: 18px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.thanks-call-button,
+.thanks-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.thanks-call-button {
+  width: 100%;
+  min-height: 52px;
+  margin-top: 24px;
+  border-radius: 7px;
+  background: linear-gradient(180deg, #268af0, #0750ad);
+  color: var(--white);
+  font-weight: 700;
+}
+
+.thanks-link {
+  margin-top: 20px;
+  color: var(--blue-600);
+  font-weight: 700;
+}
+
+.popup-backdrop {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(3 18 43 / 72%);
+}
+
+.popup-card {
+  position: relative;
+  width: min(100%, 420px);
+  border-radius: 16px;
+  padding: 28px 22px;
+  background: var(--white);
+  box-shadow: 0 24px 60px rgb(0 0 0 / 35%);
+}
+
+.popup-card h2 {
+  margin: 0 36px 16px 0;
+  color: var(--navy-900);
+  font-family: var(--font-lato), Arial, Helvetica, sans-serif;
+}
+
+.popup-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: #edf2f7;
+  color: var(--navy-900);
+  cursor: pointer;
+  font-size: 24px;
 }

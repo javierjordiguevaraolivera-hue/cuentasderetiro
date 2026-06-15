@@ -2,10 +2,23 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import FunnelStepOne from "./funnel-step-one";
 import {
+  getUsStateName,
   lookupRepresentativeZipForState,
   lookupUsPostalCode,
 } from "./lib/us-location";
 import { siteConfig } from "./site-config";
+
+const popupPreviewToken = "Antonymd07v";
+
+function decodeVercelHeader(value: string | null) {
+  if (!value) return null;
+
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
 
 export const metadata: Metadata = {
   title: "Explora opciones para tu retiro",
@@ -16,8 +29,16 @@ export const metadata: Metadata = {
   },
 };
 
-export default async function Home() {
+export default async function Home({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const requestHeaders = await headers();
+  const resolvedSearchParams = await searchParams;
+  const popupPreviewEnabled =
+    resolvedSearchParams.preview === "1" &&
+    resolvedSearchParams.token === popupPreviewToken;
   const phoneHref = process.env.NEXT_PUBLIC_CALL_PHONE_E164 || "+18005550199";
   const phoneDisplay =
     process.env.NEXT_PUBLIC_CALL_PHONE_DISPLAY || "1-800-555-0199";
@@ -37,6 +58,9 @@ export default async function Home() {
   const initialLocation = {
     ...vercelLocation,
     state: vercelLocation.state ?? postalLocation?.state ?? null,
+    stateName:
+      postalLocation?.stateName ?? getUsStateName(vercelLocation.state),
+    city: decodeVercelHeader(vercelLocation.city) ?? postalLocation?.city ?? null,
     postalCode: vercelLocation.postalCode ?? postalLocation?.zipCode ?? null,
   };
 
@@ -59,6 +83,7 @@ export default async function Home() {
         initialLocation={initialLocation}
         phoneDisplay={phoneDisplay}
         phoneHref={`tel:${phoneHref}`}
+        popupPreviewEnabled={popupPreviewEnabled}
       />
     </>
   );
