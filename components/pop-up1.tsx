@@ -152,6 +152,7 @@ export default function PopUp1({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           leadId,
+          funnelId: ringbaTags.funnel_id,
           applicationId: applicationNumber,
           printedNumber,
           page: window.location.pathname || "/",
@@ -190,7 +191,13 @@ export default function PopUp1({
       window.clearInterval(intervalId);
       window.clearTimeout(timeoutId);
     };
-  }, [applicationNumber, leadId, open, phoneNumber]);
+  }, [
+    applicationNumber,
+    leadId,
+    open,
+    phoneNumber,
+    ringbaTags.funnel_id,
+  ]);
 
   useEffect(() => {
     if (!open) return;

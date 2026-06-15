@@ -3,6 +3,7 @@ import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
 type CallAttributionPayload = {
   leadId?: string;
+  funnelId?: string;
   printedNumber?: string;
   applicationId?: string;
   page?: string;
@@ -30,6 +31,8 @@ export async function POST(request: Request) {
     .json()
     .catch(() => null)) as CallAttributionPayload | null;
   const leadId = normalizeString(body?.leadId);
+  const funnelId =
+    normalizeString(body?.funnelId) === "iul-v5" ? "iul-v5" : "iul-v4";
   const printedNumber = normalizePhone(body?.printedNumber);
   const applicationId = normalizeString(body?.applicationId);
 
@@ -60,6 +63,7 @@ export async function POST(request: Request) {
     source: "thanks_call_printed_number_capture",
     page: normalizeString(body?.page) || "/thanks/call",
     application_id: applicationId || null,
+    funnel_id: funnelId,
     printed_number: printedNumber,
     captured_at: new Date().toISOString(),
   };
@@ -107,7 +111,7 @@ export async function POST(request: Request) {
 
   const { error } = await supabase.from("ringba_call_events").insert({
     lead_id: leadId,
-    funnel_id: "iul-v4",
+    funnel_id: funnelId,
     event_name: "printed_number_captured",
     conversion_status: "captured",
     printed_number: printedNumber,

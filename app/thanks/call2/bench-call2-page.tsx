@@ -281,6 +281,7 @@ export default function BenchCall2Page({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           leadId,
+          funnelId,
           applicationId: resolvedApplicationNumber,
           printedNumber: nextPrintedNumber,
           page: "/thanks/call2",
@@ -319,7 +320,13 @@ export default function BenchCall2Page({
       window.clearInterval(intervalId);
       window.clearTimeout(timeoutId);
     };
-  }, [basePhoneNumber, leadId, printedNumber, resolvedApplicationNumber]);
+  }, [
+    basePhoneNumber,
+    funnelId,
+    leadId,
+    printedNumber,
+    resolvedApplicationNumber,
+  ]);
 
   function trackContactClick() {
     const ringbaWindow = window as Window & {

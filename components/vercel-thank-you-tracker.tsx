@@ -12,18 +12,20 @@ export default function VercelThankYouTracker({
   const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (searchParams.get("funnel_id") !== "iul-v4") return;
+    const funnelId = searchParams.get("funnel_id");
+    if (funnelId !== "iul-v4" && funnelId !== "iul-v5") return;
 
-    const eventName = `v4_thankyou_${thankYouType}`;
+    const funnelVersion = funnelId === "iul-v5" ? "v5" : "v4";
+    const eventName = `${funnelVersion}_thankyou_${thankYouType}`;
 
     track(eventName, {
-      funnel_id: "iul-v4",
+      funnel_id: funnelId,
       thank_you_type: thankYouType,
       lead_id_present: Boolean(searchParams.get("lead_id")),
     });
     pageview({
-      route: `/iul-v4/${eventName}`,
-      path: `/iul-v4/${eventName}`,
+      route: `/${funnelId}/${eventName}`,
+      path: `/${funnelId}/${eventName}`,
     });
   }, [searchParams, thankYouType]);
 
