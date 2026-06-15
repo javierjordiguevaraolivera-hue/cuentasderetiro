@@ -1,6 +1,24 @@
 import type { Metadata } from "next";
+import localFont from "next/font/local";
 import "./globals.css";
 import { siteConfig } from "./site-config";
+
+const lato = localFont({
+  src: [
+    {
+      path: "../public/fonts/lato-400.ttf",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../public/fonts/lato-700.ttf",
+      weight: "700",
+      style: "normal",
+    },
+  ],
+  variable: "--font-lato",
+  display: "swap",
+});
 
 const metaDomainVerification = process.env.META_DOMAIN_VERIFICATION;
 
@@ -69,7 +87,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es-US" className="h-full antialiased">
+    <html lang="es-US" className={`${lato.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">{children}</body>
     </html>
   );

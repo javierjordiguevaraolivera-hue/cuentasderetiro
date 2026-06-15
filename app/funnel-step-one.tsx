@@ -3,7 +3,6 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import retirementIllustration from "../public/media/imagen-ilustrativa-transparent.png";
 import retirementLogo from "../public/media/logo-cuentas-de-retiro.png";
 
 const retirementGoals = [
@@ -90,28 +89,14 @@ export default function FunnelStepOne({
       <div className="funnel-shell">
         <section className="funnel-content">
           <div className="hero-lockup">
-            <div className="retirement-illustration">
-              <Image
-                alt="Casa, árbol y alcancía protegidos por unas manos"
-                className="retirement-image"
-                priority
-                sizes="(max-width: 519px) 36vw, 160px"
-                src={retirementIllustration}
-              />
-            </div>
-
             <div className="hero-copy-block">
               <p className="hero-kicker">Planifica con más claridad</p>
               <h1>
-                Protege a tu familia
-                <span> si un día no estás</span>
+                Cuidamos de ti
+                <span> y tu familia</span>
               </h1>
             </div>
           </div>
-
-          <p className="eligibility-note">
-            Las opciones y disponibilidad pueden variar. Consulta los detalles.
-          </p>
 
           <div className="prompt-banner">
             <span className="prompt-copy">
@@ -176,19 +161,23 @@ export default function FunnelStepOne({
           </section>
 
           <aside className="trust-panel">
-            <h2>Tu información importa</h2>
+            <h2>Más que solo un seguro aislado</h2>
             <ul>
-              <li>Orientación general basada en tus respuestas</li>
-              <li>Sin promesas de rendimiento ni resultados</li>
-              <li>Sin solicitar datos bancarios o contraseñas</li>
-              <li>Privacidad y consentimiento antes del contacto</li>
+              <li>Protege a tu familia con hasta $350,000</li>
+              <li>Asegura tu casa con Mortgage Protection</li>
+              <li>Haz crecer tus ahorros para tu jubilación</li>
+              <li>Disfruta de tu seguro en vida con tu familia</li>
             </ul>
           </aside>
 
           <p className="funnel-disclaimer">
-            CuentasDeRetiro.com ofrece información educativa general. No somos
-            una agencia gubernamental, institución financiera, fiduciario ni
-            asesor de inversiones.
+            CuentasDeRetiro.com ofrece información educativa general y
+            resultados simulados a tasas fijas en escenarios optimistas para
+            ilustrar el potencial de crecimiento con un seguro de tipo IUL. No
+            somos una agencia gubernamental, institución financiera, fiduciario
+            ni asesor de inversiones. Para tener costos y beneficios reales es
+            necesario consultar con un agente licenciado y autorizado por el
+            estado.
           </p>
         </section>
 
