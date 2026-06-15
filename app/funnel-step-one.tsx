@@ -4,6 +4,7 @@ import type { CSSProperties, FormEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import PopUp1 from "../components/pop-up1";
 import { buildApplicationNumber } from "../lib/application-number";
 import retirementLogo from "../public/media/logo-cuentas-de-retiro.png";
@@ -406,17 +407,16 @@ type FunnelStepOneProps = {
     city: string | null;
     postalCode: string | null;
   };
-  phoneDisplay: string;
   phoneHref: string;
   popupPreviewEnabled?: boolean;
 };
 
 export default function FunnelStepOne({
   initialLocation,
-  phoneDisplay,
   phoneHref,
   popupPreviewEnabled = false,
 }: FunnelStepOneProps) {
+  const router = useRouter();
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [insurance_goal, setInsuranceGoal] = useState<string | null>(null);
   const [age_group, setAgeGroup] = useState<string | null>(null);
@@ -462,6 +462,9 @@ export default function FunnelStepOne({
     detectedCountry === "US" &&
     usRegionCodes.has(detectedState ?? "") &&
     /^\d{5}$/.test(detectedPostalCode ?? "");
+  const visibleStepCount = hasDetectedUsLocation ? 4 : 5;
+  const visibleCurrentStep =
+    hasDetectedUsLocation && currentStep > 3 ? currentStep - 1 : currentStep;
   const contactValidationMessage =
     phoneValidationStatus === "invalid"
       ? "Número inválido. Ingresa uno real."
@@ -573,6 +576,11 @@ export default function FunnelStepOne({
 
   function selectAge(ageRange: (typeof ageRanges)[number]) {
     if (age_group) return;
+
+    if (ageRange.id === "65-plus") {
+      router.push("/rechazo");
+      return;
+    }
 
     const locationAmount = hasDetectedUsLocation ? zipCodeAmount : 0;
     const addedAmount = ageRange.amount + locationAmount;
@@ -1031,7 +1039,6 @@ export default function FunnelStepOne({
         firstName={firstName}
         goal={insurance_goal || ""}
         leadId={submittedLeadId}
-        onClose={() => setIsPopupOpen(false)}
         open={isPopupOpen}
         phoneNumber={
           runtimeConfig.payPerCallPhoneNumber ||
@@ -1049,7 +1056,11 @@ export default function FunnelStepOne({
 
       <header className="funnel-header">
         <div className="funnel-bar-inner">
-          <Link className="funnel-logo" href="/" aria-label="Cuentas de Retiro">
+          <Link
+            className="funnel-logo"
+            href="/iul-v4"
+            aria-label="Cuentas de Retiro"
+          >
             <Image
               alt=""
               className="funnel-logo-image"
@@ -1057,18 +1068,6 @@ export default function FunnelStepOne({
               src={retirementLogo}
             />
           </Link>
-
-          <a className="header-call" href={phoneHref}>
-            <span className="phone-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <path d="M6.6 10.8a15.5 15.5 0 0 0 6.6 6.6l2.2-2.2c.3-.3.7-.4 1.1-.2 1.2.4 2.5.7 3.8.7.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.7 21 3 13.3 3 3.8c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.6.7 3.8.1.4 0 .8-.3 1.1l-2.3 2.1Z" />
-              </svg>
-            </span>
-            <span>
-              <small>Habla con un especialista</small>
-              <strong>{phoneDisplay}</strong>
-            </span>
-          </a>
         </div>
       </header>
 
@@ -1118,7 +1117,9 @@ export default function FunnelStepOne({
             aria-labelledby={`step-${currentStep}-title`}
           >
             <div className="question-heading">
-              <p>Paso {currentStep} de 5</p>
+              <p>
+                Paso {visibleCurrentStep} de {visibleStepCount}
+              </p>
             </div>
 
             <div className="question-stage">
@@ -1362,11 +1363,11 @@ export default function FunnelStepOne({
 
             <div
               className="progress-dots"
-              aria-label={`Paso ${currentStep} de 5`}
+              aria-label={`Paso ${visibleCurrentStep} de ${visibleStepCount}`}
             >
-              {Array.from({ length: 5 }, (_, index) => (
+              {Array.from({ length: visibleStepCount }, (_, index) => (
                 <span
-                  className={index === currentStep - 1 ? "active" : ""}
+                  className={index === visibleCurrentStep - 1 ? "active" : ""}
                   key={index}
                 />
               ))}

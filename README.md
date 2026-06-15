@@ -25,7 +25,8 @@ El token se renderiza como:
 
 ## Rutas públicas
 
-- `/`: landing pública.
+- `/`: redirección automática al funnel.
+- `/iul-v4`: landing y funnel público.
 - `/privacidad`: política de privacidad.
 - `/terminos`: términos y divulgaciones.
 - `/robots.txt`: acceso para crawlers, incluidos `facebookexternalhit` y `Facebot`.

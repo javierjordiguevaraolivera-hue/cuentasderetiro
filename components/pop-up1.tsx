@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import Script from "next/script";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -38,7 +39,6 @@ type PopUp1Props = {
   ringbaCampaignId?: string;
   ringbaTags?: Record<string, string>;
   continueUrl?: string;
-  onClose?: () => void;
 };
 
 function normalizePhoneDigits(value?: string | null) {
@@ -99,8 +99,8 @@ export default function PopUp1({
   ringbaCampaignId = defaultRingbaCampaignId,
   ringbaTags = {},
   continueUrl = "/thanks/call2",
-  onClose,
 }: PopUp1Props) {
+  const router = useRouter();
   const primaryLinkRef = useRef<HTMLAnchorElement | null>(null);
   const hasSentPrintedNumberRef = useRef(false);
   const printedNumberRef = useRef("");
@@ -110,6 +110,12 @@ export default function PopUp1({
   const ringbaScriptUrl = /^CA[a-zA-Z0-9]+$/.test(ringbaCampaignId)
     ? `//b-js.ringba.com/${ringbaCampaignId}`
     : "";
+
+  useEffect(() => {
+    if (!open) return;
+
+    router.prefetch(continueUrl);
+  }, [continueUrl, open, router]);
 
   useEffect(() => {
     if (!open) return;
@@ -259,8 +265,7 @@ export default function PopUp1({
   }
 
   function handleContinueClick() {
-    onClose?.();
-    window.location.assign(continueUrl);
+    router.push(continueUrl);
   }
 
   return (

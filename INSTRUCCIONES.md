@@ -61,7 +61,8 @@ estructura de conversión, adaptada a retiro y con afirmaciones verificables.
 
 ## Rutas
 
-- `/`: funnel.
+- `/`: redirección automática al funnel.
+- `/iul-v4`: funnel.
 - `/privacidad`: política de privacidad.
 - `/terminos`: términos de uso.
 - `/robots.txt`: reglas para crawlers.
