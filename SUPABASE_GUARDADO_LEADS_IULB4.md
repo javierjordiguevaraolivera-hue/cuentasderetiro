@@ -284,12 +284,11 @@ Estas son necesarias para que el backend pueda guardar:
 
 ### Nombres de tablas
 
-Estas permiten cambiar el nombre fisico de las tablas sin cambiar codigo:
+Los nombres son fijos y no dependen de variables de entorno:
 
-| Variable | Default si no existe | Uso |
-| --- | --- | --- |
-| `SUPABASE_LEADS_TABLE` | `leads` | Tabla principal de leads. |
-| `SUPABASE_LEAD_METADATA_TABLE` | `lead_metadata` | Tabla de metadata del lead. |
+- `leads`: tabla principal de leads.
+- `lead_metadata`: metadata y auditoría del lead.
+- `ringba_call_events`: atribución y eventos de llamadas.
 
 ### Clasificacion del lead
 

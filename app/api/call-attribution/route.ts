@@ -65,10 +65,8 @@ export async function POST(request: Request) {
   };
 
   if (applicationId) {
-    const metadataTableName =
-      process.env.SUPABASE_LEAD_METADATA_TABLE?.trim() || "lead_metadata";
     const { error: metadataError } = await supabase
-      .from(metadataTableName)
+      .from("lead_metadata")
       .update({ application_id: applicationId })
       .eq("lead_id", leadId);
 

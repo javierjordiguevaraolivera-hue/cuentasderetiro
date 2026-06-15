@@ -298,14 +298,12 @@ async function claimTrustedFormCertificate({
 
 async function claimTrustedFormAndUpdateLead({
   supabase,
-  metadataTableName,
   leadId,
   certUrl,
   email,
   phone,
 }: {
   supabase: ReturnType<typeof createSupabaseAdminClient>;
-  metadataTableName: string;
   leadId: string;
   certUrl: string;
   email: string;
@@ -322,7 +320,7 @@ async function claimTrustedFormAndUpdateLead({
     });
 
     const { error } = await supabase
-      .from(metadataTableName)
+      .from("lead_metadata")
       .update({
         trustedform_claim_status: claimResult.status,
         trustedform_claimed_at: claimResult.status === "claimed" ? new Date().toISOString() : null,
@@ -338,7 +336,7 @@ async function claimTrustedFormAndUpdateLead({
     console.error("TrustedForm claim failed", error);
 
     await supabase
-      .from(metadataTableName)
+      .from("lead_metadata")
       .update({
         trustedform_claim_status: "failed",
         trustedform_claim_error: error instanceof Error ? error.message : "TrustedForm claim failed",
@@ -515,10 +513,8 @@ export async function POST(request: Request) {
       flags: riskFlags,
     },
   };
-  const tableName = process.env.SUPABASE_LEADS_TABLE?.trim() || "leads";
-  const metadataTableName = process.env.SUPABASE_LEAD_METADATA_TABLE?.trim() || "lead_metadata";
   const { data, error } = await supabase
-    .from(tableName)
+    .from("leads")
     .insert({
       funnel_id: funnelId,
       age_group: normalizeString(restAnswers.ageGroup),
@@ -548,7 +544,7 @@ export async function POST(request: Request) {
   }
 
   const { error: metadataError } = await supabase
-    .from(metadataTableName)
+    .from("lead_metadata")
     .insert({
       lead_id: data.lead_id,
       application_id: buildApplicationNumber(data.lead_id),
@@ -584,7 +580,6 @@ export async function POST(request: Request) {
     waitUntil(
       claimTrustedFormAndUpdateLead({
         supabase,
-        metadataTableName,
         leadId: data.lead_id,
         certUrl: trustedFormCertUrl,
         email: normalizeString(restAnswers.email),
@@ -675,9 +670,8 @@ export async function POST(request: Request) {
   };
 
   if (applicationId) {
-    const metadataTableName = process.env.SUPABASE_LEAD_METADATA_TABLE?.trim() || "lead_metadata";
     const { error: metadataError } = await supabase
-      .from(metadataTableName)
+      .from("lead_metadata")
       .update({ application_id: applicationId })
       .eq("lead_id", leadId);
 

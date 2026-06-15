@@ -340,14 +340,12 @@ async function claimTrustedFormCertificate({
 
 async function claimTrustedFormAndUpdateLead({
   supabase,
-  metadataTableName,
   leadId,
   certUrl,
   email,
   phone,
 }: {
   supabase: NonNullable<ReturnType<typeof createSupabaseAdminClient>>;
-  metadataTableName: string;
   leadId: string;
   certUrl: string;
   email: string;
@@ -361,7 +359,7 @@ async function claimTrustedFormAndUpdateLead({
       leadId,
     });
     const { error } = await supabase
-      .from(metadataTableName)
+      .from("lead_metadata")
       .update({
         trustedform_claim_status: claimResult.status,
         trustedform_claimed_at:
@@ -375,7 +373,7 @@ async function claimTrustedFormAndUpdateLead({
   } catch (error) {
     console.error("TrustedForm claim failed", error);
     await supabase
-      .from(metadataTableName)
+      .from("lead_metadata")
       .update({
         trustedform_claim_status: "failed",
         trustedform_claim_error:
@@ -530,11 +528,8 @@ export async function POST(request: Request) {
       flags: riskFlags,
     },
   };
-  const tableName = process.env.SUPABASE_LEADS_TABLE?.trim() || "leads";
-  const metadataTableName =
-    process.env.SUPABASE_LEAD_METADATA_TABLE?.trim() || "lead_metadata";
   const { data, error } = await supabase
-    .from(tableName)
+    .from("leads")
     .insert({
       lead_id: submissionId,
       funnel_id: funnelId,
@@ -559,7 +554,7 @@ export async function POST(request: Request) {
 
   if (error?.code === "23505") {
     const { data: existingLead } = await supabase
-      .from(tableName)
+      .from("leads")
       .select("lead_id")
       .eq("lead_id", submissionId)
       .maybeSingle();
@@ -576,7 +571,7 @@ export async function POST(request: Request) {
 
   const leadId = data?.lead_id || submissionId;
   const { error: metadataError } = await supabase
-    .from(metadataTableName)
+    .from("lead_metadata")
     .upsert(
       {
         lead_id: leadId,
@@ -617,7 +612,6 @@ export async function POST(request: Request) {
     waitUntil(
       claimTrustedFormAndUpdateLead({
         supabase,
-        metadataTableName,
         leadId,
         certUrl: trustedFormCertUrl,
         email: normalizeString(restAnswers.email),
