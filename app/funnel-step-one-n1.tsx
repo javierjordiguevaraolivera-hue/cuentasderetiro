@@ -112,7 +112,6 @@ type RuntimeConfig = {
 
 type EverflowSdk = {
   click?: (payload: Record<string, string>) => unknown;
-  conversion?: (payload: Record<string, number | string>) => unknown;
   urlParameter?: (name: string) => string;
   getTransactionId?: () => string;
   transaction_id?: string;
@@ -526,23 +525,6 @@ async function getEverflowTransactionId() {
   if (existingTransactionId) return existingTransactionId;
 
   return startEverflowClick();
-}
-
-async function fireEverflowConversion() {
-  if (typeof window === "undefined") return;
-
-  await startEverflowClick();
-
-  const offerId = Number(getEverflowUrlParameter("oid")) || 3765;
-  if (!window.EF?.conversion) {
-    throw new Error("Everflow conversion SDK is not available.");
-  }
-
-  await Promise.resolve(
-    window.EF.conversion({
-      offer_id: offerId,
-    }),
-  );
 }
 
 function getOrCreateSubmissionId() {
@@ -1136,9 +1118,6 @@ export default function FunnelStepOneN1({
       }
 
       const leadId = responseBody.leadId;
-      void fireEverflowConversion().catch((error) => {
-        console.error("Everflow conversion failed", error);
-      });
       submittedLeadIdRef.current = leadId;
       setSubmittedLeadId(leadId);
       setEmail(cleanEmail);
@@ -1192,6 +1171,8 @@ export default function FunnelStepOneN1({
       nextParams.set("insurance_goal", insurance_goal);
       nextParams.set("age_group", age_group);
       nextParams.set("application_number", buildApplicationNumber(leadId));
+      nextParams.set("everflow_conversion", "1");
+      nextParams.set("everflow_source", "n1");
       if (activeRuntimeConfig.payPerCallPhoneNumber) {
         nextParams.set(
           "ppc_phone",
