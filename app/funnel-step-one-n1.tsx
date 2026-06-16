@@ -1171,8 +1171,6 @@ export default function FunnelStepOneN1({
       nextParams.set("insurance_goal", insurance_goal);
       nextParams.set("age_group", age_group);
       nextParams.set("application_number", buildApplicationNumber(leadId));
-      nextParams.set("everflow_conversion", "1");
-      nextParams.set("everflow_source", "n1");
       if (activeRuntimeConfig.payPerCallPhoneNumber) {
         nextParams.set(
           "ppc_phone",

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
-import EverflowConversionTracker from "../../../components/everflow-conversion-tracker";
 import VercelThankYouTracker from "../../../components/vercel-thank-you-tracker";
 import ThanksCall2Client from "./thanks-call2-client";
 
@@ -17,7 +16,6 @@ export default function ThanksCall2Page() {
   return (
     <Suspense fallback={null}>
       <VercelThankYouTracker thankYouType="call" />
-      <EverflowConversionTracker />
       <ThanksCall2Client />
     </Suspense>
   );

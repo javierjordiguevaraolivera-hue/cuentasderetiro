@@ -11,7 +11,6 @@ import {
   User,
   Zap,
 } from "lucide-react";
-import EverflowConversionTracker from "../../../components/everflow-conversion-tracker";
 import VercelThankYouTracker from "../../../components/vercel-thank-you-tracker";
 
 export const metadata: Metadata = {
@@ -87,7 +86,6 @@ export default function LeadThanksPage() {
     <main className="min-h-screen bg-[#f6f8fb] px-0 py-0 text-[#13213c] md:px-4 md:py-6">
       <Suspense fallback={null}>
         <VercelThankYouTracker thankYouType="lead" />
-        <EverflowConversionTracker />
       </Suspense>
 
       <div className="mx-auto w-full max-w-[490px] overflow-hidden bg-white">
