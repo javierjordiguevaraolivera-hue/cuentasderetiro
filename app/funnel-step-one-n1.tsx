@@ -93,6 +93,9 @@ const deviceStorageKey = "better-life-device-id";
 const deviceCookieName = "bf_iul_device_id";
 const deviceCookieDurationDays = 15;
 const submissionStorageKey = "bf_n1_submission_id";
+const everflowScriptId = "everflow-sdk";
+const everflowScriptSrc = "https://www.jk8gcxs.com/scripts/main.js";
+const everflowTransactionStorageKey = "bf_n1_everflow_transaction_id";
 const trustedFormScriptId = "trustedform-certify-sdk";
 const trustedFormFieldName =
   process.env.NEXT_PUBLIC_TRUSTEDFORM_FIELD || "xxTrustedFormCertUrl";
@@ -106,6 +109,21 @@ type RuntimeConfig = {
   payPerCallPhoneNumber: string;
   ringbaCampaignId: string;
 };
+
+type EverflowSdk = {
+  click?: (payload: Record<string, string>) => unknown;
+  urlParameter?: (name: string) => string;
+  getTransactionId?: () => string;
+  transaction_id?: string;
+  transactionId?: string;
+};
+
+declare global {
+  interface Window {
+    EF?: EverflowSdk;
+    __bfN1EverflowClickPromise?: Promise<string>;
+  }
+}
 const defaultRuntimeConfig: RuntimeConfig = {
   payPerCallStatus: "OFF",
   payPerCallStartTime: "",
@@ -378,6 +396,137 @@ function getAdAccountName() {
   );
 }
 
+function getSearchParam(name: string) {
+  if (typeof window === "undefined") return "";
+
+  const searchParams = new URLSearchParams(window.location.search);
+  const entry = [...searchParams.entries()].find(
+    ([key]) => key.toLowerCase() === name.toLowerCase(),
+  );
+
+  return entry?.[1]?.trim() || "";
+}
+
+function getEverflowUrlParameter(name: string) {
+  if (typeof window === "undefined") return "";
+
+  return (
+    window.EF?.urlParameter?.(name)?.trim() ||
+    getSearchParam(name)
+  );
+}
+
+function extractEverflowTransactionId(value: unknown): string {
+  if (typeof value === "string") return value.trim();
+  if (!value || typeof value !== "object") return "";
+
+  const record = value as Record<string, unknown>;
+  return (
+    extractEverflowTransactionId(record.transaction_id) ||
+    extractEverflowTransactionId(record.transactionId) ||
+    extractEverflowTransactionId(record._ef_transaction_id)
+  );
+}
+
+function readEverflowTransactionIdFromSdk() {
+  if (typeof window === "undefined") return "";
+
+  return (
+    window.EF?.getTransactionId?.()?.trim() ||
+    window.EF?.transaction_id?.trim() ||
+    window.EF?.transactionId?.trim() ||
+    ""
+  );
+}
+
+function getStoredEverflowTransactionId() {
+  if (typeof window === "undefined") return "";
+
+  return (
+    window.sessionStorage.getItem(everflowTransactionStorageKey)?.trim() ||
+    readEverflowTransactionIdFromSdk()
+  );
+}
+
+function storeEverflowTransactionId(transactionId: string) {
+  if (typeof window === "undefined" || !transactionId) return;
+
+  window.sessionStorage.setItem(
+    everflowTransactionStorageKey,
+    transactionId,
+  );
+}
+
+function loadEverflowSdk() {
+  if (typeof document === "undefined") return Promise.resolve();
+  if (window.EF) return Promise.resolve();
+
+  return new Promise<void>((resolve, reject) => {
+    const existingScript = document.getElementById(
+      everflowScriptId,
+    ) as HTMLScriptElement | null;
+
+    if (existingScript) {
+      existingScript.addEventListener("load", () => resolve(), { once: true });
+      existingScript.addEventListener("error", () => reject(), { once: true });
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.id = everflowScriptId;
+    script.type = "text/javascript";
+    script.async = true;
+    script.src = everflowScriptSrc;
+    script.onload = () => resolve();
+    script.onerror = () => reject();
+    document.head.appendChild(script);
+  });
+}
+
+async function startEverflowClick() {
+  if (typeof window === "undefined") return "";
+  if (window.__bfN1EverflowClickPromise) {
+    return window.__bfN1EverflowClickPromise;
+  }
+
+  window.__bfN1EverflowClickPromise = (async () => {
+    await loadEverflowSdk();
+
+    const ef = window.EF;
+    const clickResult = ef?.click?.({
+      offer_id: getEverflowUrlParameter("oid"),
+      affiliate_id: getEverflowUrlParameter("affid"),
+      source_id: getEverflowUrlParameter("source_id"),
+      sub1: getEverflowUrlParameter("sub1"),
+      sub2: getEverflowUrlParameter("sub2"),
+      sub3: getEverflowUrlParameter("sub3"),
+      sub4: getEverflowUrlParameter("sub4"),
+      sub5: getEverflowUrlParameter("sub5"),
+      uid: getEverflowUrlParameter("uid"),
+      transaction_id: getEverflowUrlParameter("_ef_transaction_id"),
+    });
+    const transactionId =
+      extractEverflowTransactionId(await Promise.resolve(clickResult)) ||
+      readEverflowTransactionIdFromSdk() ||
+      getStoredEverflowTransactionId();
+
+    if (transactionId) storeEverflowTransactionId(transactionId);
+    return transactionId;
+  })().catch((error) => {
+    console.error("Everflow click tracking failed", error);
+    return getStoredEverflowTransactionId();
+  });
+
+  return window.__bfN1EverflowClickPromise;
+}
+
+async function getEverflowTransactionId() {
+  const existingTransactionId = getStoredEverflowTransactionId();
+  if (existingTransactionId) return existingTransactionId;
+
+  return startEverflowClick();
+}
+
 function getOrCreateSubmissionId() {
   if (typeof window === "undefined") return "";
 
@@ -446,6 +595,7 @@ export default function FunnelStepOneN1({
     useState<ValidationStatus>("idle");
   const [runtimeConfig, setRuntimeConfig] =
     useState<RuntimeConfig>(defaultRuntimeConfig);
+  const [everflowTransactionId, setEverflowTransactionId] = useState(sub2);
   const [isPopupOpen, setIsPopupOpen] = useState(popupPreviewEnabled);
   const [currentAmount, setCurrentAmount] = useState(65000);
   const [odometerValues, setOdometerValues] = useState(initialSlotValues);
@@ -493,6 +643,23 @@ export default function FunnelStepOneN1({
 
     const firstScript = document.getElementsByTagName("script")[0];
     firstScript?.parentNode?.insertBefore(trustedFormScript, firstScript);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function initializeEverflow() {
+      const transactionId = await startEverflowClick();
+      if (cancelled || !transactionId) return;
+
+      setEverflowTransactionId(transactionId);
+    }
+
+    void initializeEverflow();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -904,6 +1071,12 @@ export default function FunnelStepOneN1({
       const salePath: "call" | "lead" = shouldUsePayPerCall
         ? "call"
         : "lead";
+      const nextEverflowTransactionId =
+        (await getEverflowTransactionId()) || everflowTransactionId;
+      if (nextEverflowTransactionId) {
+        setEverflowTransactionId(nextEverflowTransactionId);
+      }
+      const leadSub2 = nextEverflowTransactionId;
       const response = await fetch("/api/network", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -913,7 +1086,7 @@ export default function FunnelStepOneN1({
             ageGroup: age_group,
             insuranceGoal: insurance_goal,
             sub1,
-            sub2,
+            sub2: leadSub2,
             state: finalState,
             firstName: firstName.trim(),
             lastName: lastName.trim(),
@@ -963,7 +1136,8 @@ export default function FunnelStepOneN1({
             step: 5,
             funnel_id: funnelId,
             sub1,
-            sub2,
+            sub2: leadSub2,
+            everflow_transaction_id: nextEverflowTransactionId,
             insurance_goal,
             age_group,
             state: finalState,
@@ -1059,7 +1233,8 @@ export default function FunnelStepOneN1({
           iul_v4_age_group: age_group || "",
           iul_v4_insurance_goal: insurance_goal || "",
           sub1,
-          sub2,
+          sub2: everflowTransactionId,
+          everflow_transaction_id: everflowTransactionId,
           ...(popupPreviewEnabled ? { preview: "1" } : {}),
         }}
       />

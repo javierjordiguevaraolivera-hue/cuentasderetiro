@@ -49,11 +49,9 @@ export default async function N1Page({
   const requestHeaders = await headers();
   const resolvedSearchParams = await searchParams;
   const sub1 =
-    getCaseInsensitiveSearchParam(resolvedSearchParams, "oid") ||
-    getCaseInsensitiveSearchParam(resolvedSearchParams, "sub1");
-  const sub2 =
     getCaseInsensitiveSearchParam(resolvedSearchParams, "affid") ||
-    getCaseInsensitiveSearchParam(resolvedSearchParams, "sub2");
+    getCaseInsensitiveSearchParam(resolvedSearchParams, "sub1");
+  const sub2 = getCaseInsensitiveSearchParam(resolvedSearchParams, "sub2");
   const popupPreviewEnabled =
     resolvedSearchParams.preview === "1" &&
     resolvedSearchParams.token === popupPreviewToken;
