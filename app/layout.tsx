@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { Suspense } from "react";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
+import PostHogAnalytics from "../components/posthog-analytics";
 import { siteConfig } from "./site-config";
 
 const lato = localFont({
@@ -90,6 +92,9 @@ export default function RootLayout({
   return (
     <html lang="es-US" className={`${lato.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">
+        <Suspense fallback={null}>
+          <PostHogAnalytics />
+        </Suspense>
         {children}
         <Analytics />
       </body>

@@ -582,6 +582,16 @@ export default function FunnelStepOneN2({
     if (age_group) return;
 
     if (ageRange.id === "65-plus") {
+      window.dispatchEvent(
+        new CustomEvent("funnel:rejected", {
+          detail: {
+            reason: "age_65_plus",
+            funnel_id: funnelId,
+            step: 2,
+            insurance_goal,
+          },
+        }),
+      );
       router.push("/rechazo");
       return;
     }
@@ -814,6 +824,27 @@ export default function FunnelStepOneN2({
     setContactSubmitted(false);
   }
 
+  function reportFunnelError(
+    reason: string,
+    message: string,
+    step = currentStep,
+  ) {
+    window.dispatchEvent(
+      new CustomEvent("funnel:error", {
+        detail: {
+          reason,
+          message,
+          step,
+          funnel_id: funnelId,
+          insurance_goal,
+          age_group,
+          state: resolvedState,
+          zip_code: resolvedZipCode,
+        },
+      }),
+    );
+  }
+
   async function submitContact(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -829,13 +860,17 @@ export default function FunnelStepOneN2({
 
     if (!isValidUsPhone(phoneNumber)) {
       setPhoneValidationStatus("invalid");
-      setContactError("Ingresa un número de teléfono válido de Estados Unidos.");
+      const message = "Ingresa un número de teléfono válido de Estados Unidos.";
+      setContactError(message);
+      reportFunnelError("invalid_phone", message);
       return;
     }
 
     if (!isValidEmailAddress(cleanEmail)) {
       setEmailValidationStatus("invalid");
-      setContactError("Ingresa un email válido.");
+      const message = "Ingresa un email válido.";
+      setContactError(message);
+      reportFunnelError("invalid_email", message);
       return;
     }
 
@@ -845,7 +880,9 @@ export default function FunnelStepOneN2({
       !resolvedState ||
       !resolvedZipCode
     ) {
-      setContactError("No pudimos completar tu ubicación. Intenta nuevamente.");
+      const message = "No pudimos completar tu ubicación. Intenta nuevamente.";
+      setContactError(message);
+      reportFunnelError("missing_state_or_zip", message);
       return;
     }
 
@@ -1022,11 +1059,12 @@ export default function FunnelStepOneN2({
 
       window.location.assign(`/thanks/lead${nextSearch}`);
     } catch (error) {
-      setContactError(
+      const message =
         error instanceof Error
           ? error.message
-          : "No pudimos guardar tu información. Intenta nuevamente.",
-      );
+          : "No pudimos guardar tu información. Intenta nuevamente.";
+      setContactError(message);
+      reportFunnelError("lead_submit_failed", message);
     } finally {
       submitInFlightRef.current = false;
       setIsSubmittingLead(false);

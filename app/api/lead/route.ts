@@ -477,8 +477,7 @@ export async function POST(request: Request) {
     !zipCode ||
     !firstName ||
     !lastName ||
-    !email ||
-    !locationText
+    !email
   ) {
     return NextResponse.json(
       { error: "La información del lead está incompleta o no es válida." },
