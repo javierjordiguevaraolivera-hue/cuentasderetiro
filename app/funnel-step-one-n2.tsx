@@ -859,7 +859,9 @@ export default function FunnelStepOneN2({
       let finalStateName = resolvedStateName?.trim() || "";
       let finalZipCode = resolvedZipCode;
       let locationText =
-        city && finalStateName ? `${city}, ${finalStateName}` : "";
+        city && finalStateName
+          ? `${city}, ${finalStateName}`
+          : finalStateName || finalState || finalZipCode;
 
       if (!locationText) {
         const locationResponse = await fetch("/api/location/resolve", {
@@ -882,7 +884,9 @@ export default function FunnelStepOneN2({
           finalZipCode = location.zipCode || finalZipCode;
           locationText =
             location.locationText ||
-            (city && finalStateName ? `${city}, ${finalStateName}` : "");
+            (city && finalStateName
+              ? `${city}, ${finalStateName}`
+              : finalStateName || finalState || finalZipCode);
           setResolvedCity(city || null);
           setResolvedState(finalState);
           setResolvedStateName(finalStateName);
@@ -890,10 +894,7 @@ export default function FunnelStepOneN2({
         }
       }
 
-      if (!locationText) {
-        setContactError("No pudimos completar tu ubicación. Intenta nuevamente.");
-        return;
-      }
+      locationText = locationText || finalState || finalZipCode;
 
       const deviceId = getOrCreateDeviceId();
       const trustedFormCertUrl = getTrustedFormCertUrl();

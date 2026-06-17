@@ -164,13 +164,7 @@ export async function lookupUsPostalCode(
     const city = place?.["place name"]?.trim();
     const resolvedZip = data["post code"];
 
-    if (
-      !state ||
-      !/^[A-Z]{2}$/.test(state) ||
-      !stateName ||
-      !resolvedZip ||
-      !city
-    ) {
+    if (!state || !/^[A-Z]{2}$/.test(state) || !stateName || !resolvedZip) {
       return null;
     }
 
@@ -178,8 +172,8 @@ export async function lookupUsPostalCode(
       zipCode: resolvedZip,
       state,
       stateName,
-      city,
-      locationText: `${city}, ${stateName}`,
+      city: city || "",
+      locationText: city ? `${city}, ${stateName}` : stateName,
     };
   } catch {
     return null;
@@ -195,6 +189,16 @@ export async function lookupRepresentativeZipForState(
   if (!representativeZip) return null;
 
   const location = await lookupUsPostalCode(representativeZip);
+  const stateName = getUsStateName(normalizedState);
 
-  return location?.state === normalizedState ? location : null;
+  if (location?.state === normalizedState) return location;
+  if (!stateName) return null;
+
+  return {
+    zipCode: representativeZip,
+    state: normalizedState,
+    stateName,
+    city: "",
+    locationText: stateName,
+  };
 }

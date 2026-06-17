@@ -271,6 +271,12 @@ function isTrustedFormCertUrl(value: string) {
   }
 }
 
+function getMissingLeadFields(fields: Record<string, unknown>) {
+  return Object.entries(fields)
+    .filter(([, value]) => !value)
+    .map(([key]) => key);
+}
+
 async function claimTrustedFormCertificate({
   certUrl,
   email,
@@ -470,9 +476,26 @@ export async function POST(request: Request) {
     !zipCode ||
     !firstName ||
     !lastName ||
-    !email ||
-    !locationText
+    !email
   ) {
+    console.error("Network lead validation failed", {
+      submissionId,
+      page: body.page || "home",
+      missingFields: getMissingLeadFields({
+        ageGroup,
+        insuranceGoal,
+        state,
+        zipCode,
+        firstName,
+        lastName,
+        email,
+      }),
+      phoneValid: phoneValidation.isValid,
+      phoneFlags: phoneValidation.flags,
+      state,
+      zipCode,
+      salePath: body.meta?.salePath,
+    });
     return NextResponse.json(
       { error: "La información del lead está incompleta o no es válida." },
       { status: 422 },
@@ -559,7 +582,16 @@ export async function POST(request: Request) {
   }
 
   if (error && !isDuplicateSubmission) {
-    console.error("Supabase lead insert failed", error);
+    console.error("Supabase lead insert failed", {
+      error,
+      submissionId,
+      page: body.page || "home",
+      state,
+      zipCode,
+      salePath,
+      sub1Present: Boolean(sub1),
+      sub2Present: Boolean(sub2),
+    });
     return NextResponse.json(
       { error: "No pudimos guardar el lead en Supabase" },
       { status: 502 },
@@ -591,7 +623,17 @@ export async function POST(request: Request) {
     );
 
   if (metadataError) {
-    console.error("Supabase lead metadata insert failed", metadataError);
+    console.error("Supabase lead metadata insert failed", {
+      error: metadataError,
+      leadId,
+      submissionId,
+      page: body.page || "home",
+      state,
+      zipCode,
+      salePath,
+      sub1Present: Boolean(sub1),
+      sub2Present: Boolean(sub2),
+    });
     return NextResponse.json(
       { error: "No pudimos guardar la metadata del lead en Supabase" },
       { status: 502 },
