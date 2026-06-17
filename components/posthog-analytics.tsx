@@ -10,6 +10,14 @@ const posthogHost =
 
 type FunnelEventDetail = Record<string, unknown>;
 
+const funnelStepEventNames: Record<number, string> = {
+  1: "funnel_step_goal",
+  2: "funnel_step_age",
+  3: "funnel_step_zip",
+  4: "funnel_step_name",
+  5: "funnel_step_contact",
+};
+
 function captureEvent(name: string, properties?: FunnelEventDetail) {
   if (!posthogKey) return;
   posthog.capture(name, properties);
@@ -36,11 +44,24 @@ export default function PostHogAnalytics() {
       captureEvent("funnel_step_complete", detail);
 
       if (typeof step === "number") {
-        captureEvent(`funnel_step_${step}`, detail);
+        captureEvent(
+          funnelStepEventNames[step] || `funnel_step_${step}`,
+          detail,
+        );
       }
 
       if (step === 5 && typeof detail.lead_id === "string" && detail.lead_id) {
+        const fullName = [detail.first_name, detail.last_name]
+          .filter((value) => typeof value === "string" && value.trim())
+          .join(" ");
+
         posthog.identify(detail.lead_id, {
+          ...(fullName ? { name: fullName, $name: fullName } : {}),
+          first_name: detail.first_name,
+          last_name: detail.last_name,
+          email: detail.email,
+          phone: detail.phone_number,
+          phone_number: detail.phone_number,
           funnel_id: detail.funnel_id,
           insurance_goal: detail.insurance_goal,
           age_group: detail.age_group,
